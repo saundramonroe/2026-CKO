@@ -1,5 +1,6 @@
 
 # Data files
+creditcare.csv
 data/*.csv
 data/*.parquet
 
