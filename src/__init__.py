@@ -1,5 +1,5 @@
 """
-Fraud Detection System - Core Package
+Fraud Detection System - Anaconda Core Package
 
 This package provides a hybrid fraud detection system combining:
 - Traditional ML (XGBoost/Random Forest)
