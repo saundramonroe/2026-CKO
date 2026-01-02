@@ -126,9 +126,16 @@ TARGET_RECALL = 0.80
 # FILE PATHS
 # ================================================================================
 
-DATA_PATH = 'data/creditcard.csv'
-MODEL_SAVE_PATH = 'models/hybrid_fraud_model.pkl'
-RESULTS_PATH = 'assets/fraud_detection_results.png'
+from pathlib import Path
+import os
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+DATA_PATH = Path(
+    os.getenv("CREDITCARD_DATA_PATH", PROJECT_ROOT / "data" / "creditcard.csv")
+)
+MODEL_SAVE_PATH = PROJECT_ROOT / 'models' / 'hybrid_fraud_model.pkl'
+RESULTS_PATH = PROJECT_ROOT / 'assets' / 'fraud_detection_results.png'
 
 
 # ================================================================================

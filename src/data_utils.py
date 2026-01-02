@@ -15,49 +15,45 @@ import os
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from .config import (
+from pathlib import Path
+from src.config import (
     DATA_PATH, LEGITIMATE_MERCHANTS, SUSPICIOUS_MERCHANTS,
     TEST_SIZE, RANDOM_STATE, TRAIN_SAMPLE_SIZE, TEST_SAMPLE_SIZE
 )
-
 
 # ================================================================================
 # DATA LOADING
 # ================================================================================
 
-def load_fraud_data(filepath=None, verbose=True):
+def load_fraud_data(filepath: Path = DATA_PATH, verbose: bool = True) -> pd.DataFrame:
     """
-    Load fraud detection dataset
-    
+    Load fraud detection dataset.
+
     Args:
-        filepath: Path to creditcard.csv (default: from config)
+        filepath: Path to creditcard.csv (default: DATA_PATH from config)
         verbose: Print loading statistics
-        
+
     Returns:
         pandas DataFrame with fraud transaction data
-        
-    Anaconda Value: 
-        - Pandas tracked in environment
-        - Reproducible data loading
     """
-    if filepath is None:
-        filepath = DATA_PATH
-    
-    if not os.path.exists(filepath):
+    if not filepath.exists():
         raise FileNotFoundError(
-            f"Dataset not found at {filepath}\n"
-            "Download from: https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud\n"
-            "Place in data/ directory"
+            "Dataset not found.\n"
+            "Download from Kaggle and place the file at:\n"
+            f"{filepath}\n\n"
+            "See data/README.md for instructions."
         )
-    
+
     data = pd.read_csv(filepath)
-    
+
     if verbose:
         print(f" Dataset loaded: {len(data):,} transactions")
         print(f"  • Features: {data.shape[1]} columns")
-        print(f"  • Fraud rate: {(data['Class']==1).sum()/len(data)*100:.4f}%")
-        print(f"  • Imbalance ratio: {(data['Class']==0).sum()/(data['Class']==1).sum():.0f}:1")
-    
+        print(f"  • Fraud rate: {(data['Class'] == 1).mean() * 100:.4f}%")
+        legit = (data['Class'] == 0).sum()
+        fraud = (data['Class'] == 1).sum()
+        print(f"  • Imbalance ratio: {legit / fraud:.0f}:1")
+
     return data
 
 
