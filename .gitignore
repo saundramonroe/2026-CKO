@@ -1,2 +1,30 @@
-creditcard.csv
+
+# Data files
 data/*.csv
+data/*.parquet
+
+# Model files
+*.pkl
+*.joblib
+*.pt
+*.pth
+
+# Anaconda
+.conda/
+__pycache__/
+*.py[cod]
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/
