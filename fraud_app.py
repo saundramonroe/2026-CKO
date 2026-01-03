@@ -526,92 +526,360 @@ elif page == "Test Transaction":
         st.button("Random Suspicious", key="rand_susp", on_click=set_random_susp)
 
 # ================================================================================
-# PAGE 3: ANALYTICS
 # ================================================================================
-
-# ================================================================================
-# PAGE 3: ANALYTICS
+# PAGE 3: ANALYTICS (DYNAMIC FRAUD PATTERNS)
 # ================================================================================
 
 elif page == "Analytics":
-    st.title("Advanced Analytics")
+    st.title("Advanced Analytics & Fraud Intelligence")
+    st.markdown("Monitor fraud patterns, trends, and system performance")
     
-    time_range = st.selectbox(
-        "Select Time Range",
-        ["Last 24 Hours", "Last 7 Days", "Last 30 Days", "Last 90 Days"]
-    )
+    # ============================================================================
+    # TIME RANGE SELECTOR
+    # ============================================================================
     
-    st.subheader("Fraud Distribution by Category")
+    col_selector, col_refresh = st.columns([4, 1])
     
-    # Generate different fraud patterns based on time range
-    categories = ['Crypto/ATM', 'Online Shopping', 'Wire Transfers', 'Other', 'Gas Stations', 'Restaurants']
+    with col_selector:
+        time_range = st.selectbox(
+            "Select Time Range",
+            ["Last 24 Hours", "Last 7 Days", "Last 30 Days", "Last 90 Days"],
+            help="View fraud patterns and system metrics across different time periods"
+        )
     
-    # Different fraud patterns for each time range (simulated realistic data)
-    fraud_data_by_range = {
-        "Last 24 Hours": [8, 5, 4, 3, 2, 1],  # 23 total frauds (as shown in dashboard)
-        "Last 7 Days": [56, 35, 28, 21, 14, 7],  # ~161 total frauds
-        "Last 30 Days": [240, 150, 120, 90, 60, 30],  # ~690 total frauds
-        "Last 90 Days": [720, 450, 360, 270, 180, 90]  # ~2,070 total frauds
-    }
-    
-    # Get fraud counts for selected time range
-    fraud_counts = fraud_data_by_range[time_range]
-    total_frauds = sum(fraud_counts)
-    
-    # Create pie chart with percentages
-    fig = px.pie(
-        values=fraud_counts,
-        names=categories,
-        title=f"Fraud Cases by Category ({time_range})",
-        color_discrete_sequence=px.colors.sequential.RdBu
-    )
-    
-    # Update layout for better readability
-    fig.update_traces(
-        textposition='inside',
-        textinfo='percent+label',
-        hovertemplate='<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>'
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
-    
-    # Add summary stats below pie chart
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Total Fraud Cases", f"{total_frauds:,}", f"{time_range}")
-    with col2:
-        st.metric("Highest Risk Category", "Crypto/ATM", f"{fraud_counts[0]} cases")
-    with col3:
-        fraud_rate = total_frauds / (12547 if time_range == "Last 24 Hours" else 
-                                     87829 if time_range == "Last 7 Days" else
-                                     376320 if time_range == "Last 30 Days" else
-                                     1128960) * 100
-        st.metric("Fraud Rate", f"{fraud_rate:.2f}%", delta_color="inverse")
+    with col_refresh:
+        st.write("")  # Spacing
+        if st.button("🔄 Refresh Data", use_container_width=True):
+            st.rerun()
     
     st.markdown("---")
+    
+    # ============================================================================
+    # FRAUD DISTRIBUTION BY CATEGORY (DYNAMIC)
+    # ============================================================================
+    
+    st.subheader("📊 Fraud Distribution by Category")
+    
+    categories = ['Crypto/ATM', 'Online Shopping', 'Wire Transfers', 'Other', 'Gas Stations', 'Restaurants']
+    
+    # Different fraud patterns showing evolving trends over time
+    fraud_data_by_range = {
+        # Last 24 hours - Recent crypto spike
+        "Last 24 Hours": {
+            'counts': [8, 5, 4, 3, 2, 1],  # Total: 23 frauds
+            'total_transactions': 12547,
+            'note': '📈 Crypto fraud spike detected today',
+            'insight': 'Crypto/ATM fraud at 34.8% - highest in 30 days',
+            'recommendation': 'Consider additional verification for crypto transactions',
+            'trend': 'up'
+        },
+        
+        # Last 7 days - Crypto still elevated, shopping increasing
+        "Last 7 Days": {
+            'counts': [52, 38, 30, 22, 12, 7],  # Total: 161 frauds (~23/day)
+            'total_transactions': 87829,
+            'note': '⚠️ Crypto remains elevated this week',
+            'insight': 'Online shopping fraud trending up (+15% vs previous week)',
+            'recommendation': 'Monitor e-commerce transactions during sales events',
+            'trend': 'stable'
+        },
+        
+        # Last 30 days - Shopping fraud increasing (holiday season)
+        "Last 30 Days": {
+            'counts': [210, 165, 125, 95, 60, 35],  # Total: 690 frauds (~23/day)
+            'total_transactions': 376320,
+            'note': '🛍️ Shopping fraud trending up (holiday season)',
+            'insight': 'E-commerce fraud up to 23.9% (from 18% baseline) - seasonal pattern',
+            'recommendation': 'Enhanced monitoring for online retail during Q4',
+            'trend': 'up'
+        },
+        
+        # Last 90 days - Longer term balanced patterns
+        "Last 90 Days": {
+            'counts': [595, 525, 385, 280, 175, 110],  # Total: 2,070 frauds (~23/day)
+            'total_transactions': 1128960,
+            'note': '📊 Balanced fraud distribution over quarter',
+            'insight': 'Crypto fraud decreased 6% quarter-over-quarter (better controls)',
+            'recommendation': 'Maintain current crypto safeguards, monitor shopping trends',
+            'trend': 'down'
+        }
+    }
+    
+    # Get data for selected range
+    selected_data = fraud_data_by_range[time_range]
+    fraud_counts = selected_data['counts']
+    total_frauds = sum(fraud_counts)
+    total_transactions = selected_data['total_transactions']
+    fraud_rate = (total_frauds / total_transactions) * 100
+    
+    # Calculate percentages
+    percentages = [(count/total_frauds)*100 for count in fraud_counts]
+    
+    # Create two columns for chart and stats
+    col_chart, col_stats = st.columns([2, 1])
+    
+    with col_chart:
+        # Create pie chart
+        fig = px.pie(
+            values=fraud_counts,
+            names=categories,
+            title=f"Fraud Cases by Category ({time_range})",
+            color_discrete_sequence=px.colors.sequential.RdBu,
+            hole=0.3  # Donut chart style
+        )
+        
+        fig.update_traces(
+            textposition='inside',
+            textinfo='percent+label',
+            hovertemplate='<b>%{label}</b><br>Count: %{value:,}<br>Percentage: %{percent}<extra></extra>'
+        )
+        
+        fig.update_layout(
+            height=450,
+            showlegend=True,
+            legend=dict(
+                orientation="v",
+                yanchor="middle",
+                y=0.5,
+                xanchor="left",
+                x=1.05
+            )
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    
+    with col_stats:
+        st.markdown("### 📈 Key Statistics")
+        
+        st.metric(
+            "Total Fraud Cases",
+            f"{total_frauds:,}",
+            f"{time_range}"
+        )
+        
+        st.metric(
+            "Total Transactions",
+            f"{total_transactions:,}",
+            f"{fraud_rate:.3f}% fraud rate",
+            delta_color="inverse"
+        )
+        
+        highest_idx = fraud_counts.index(max(fraud_counts))
+        st.metric(
+            "Highest Risk",
+            categories[highest_idx],
+            f"{percentages[highest_idx]:.1f}% of fraud"
+        )
+        
+        # Trend indicator
+        trend_emoji = {
+            'up': '📈 Increasing',
+            'down': '📉 Decreasing', 
+            'stable': '➡️ Stable'
+        }
+        
+        st.markdown(f"**Trend:** {trend_emoji[selected_data['trend']]}")
+    
+    # Alert box with insight
+    if selected_data['trend'] == 'up':
+        st.warning(f"⚠️ **Alert:** {selected_data['note']}")
+    elif selected_data['trend'] == 'down':
+        st.success(f"✅ **Good News:** {selected_data['note']}")
+    else:
+        st.info(f"ℹ️ {selected_data['note']}")
+    
+    # Detailed insight
+    st.markdown(f"**Analysis:** {selected_data['insight']}")
+    st.markdown(f"**Recommendation:** {selected_data['recommendation']}")
+    
+    # Detailed breakdown table
+    with st.expander("📊 View Detailed Category Breakdown"):
+        breakdown_df = pd.DataFrame({
+            'Category': categories,
+            'Fraud Count': fraud_counts,
+            'Percentage': [f"{p:.1f}%" for p in percentages],
+            'Avg per Day': [f"{c / (1 if time_range == 'Last 24 Hours' else 7 if time_range == 'Last 7 Days' else 30 if time_range == 'Last 30 Days' else 90):.1f}" for c in fraud_counts]
+        })
+        
+        # Add risk level
+        def risk_level(pct):
+            if pct > 30:
+                return "🔴 Critical"
+            elif pct > 20:
+                return "🟡 High"
+            elif pct > 10:
+                return "🟢 Moderate"
+            else:
+                return "⚪ Low"
+        
+        breakdown_df['Risk Level'] = [risk_level(p) for p in percentages]
+        
+        st.dataframe(
+            breakdown_df,
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        # Category comparison
+        st.markdown("### Category Insights")
+        for i, cat in enumerate(categories):
+            if percentages[i] > 25:
+                st.markdown(f"- **{cat}**: Critical focus area ({percentages[i]:.1f}%) - {fraud_counts[i]:,} cases")
+            elif percentages[i] > 15:
+                st.markdown(f"- **{cat}**: High priority ({percentages[i]:.1f}%) - {fraud_counts[i]:,} cases")
+    
+    st.markdown("---")
+    
+    # ============================================================================
+    # CATEGORY TREND OVER TIME (NEW SECTION)
+    # ============================================================================
+    
+    st.subheader("📈 Category Trends Over Time")
+    
+    col_trend1, col_trend2 = st.columns(2)
+    
+    with col_trend1:
+        # Show how top 3 categories have changed
+        if time_range == "Last 90 Days":
+            # Show weekly breakdown over 90 days
+            weeks = ['Week 1-2', 'Week 3-4', 'Week 5-6', 'Week 7-8', 'Week 9-10', 'Week 11-12', 'Week 13']
+            crypto_trend = [140, 135, 130, 125, 115, 105, 95]
+            shopping_trend = [85, 90, 95, 105, 115, 125, 135]
+            wire_trend = [65, 63, 62, 58, 55, 52, 50]
+            
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=weeks, y=crypto_trend, mode='lines+markers',
+                                    name='Crypto/ATM', line=dict(color='#8B0000', width=3)))
+            fig.add_trace(go.Scatter(x=weeks, y=shopping_trend, mode='lines+markers',
+                                    name='Online Shopping', line=dict(color='#DC143C', width=3)))
+            fig.add_trace(go.Scatter(x=weeks, y=wire_trend, mode='lines+markers',
+                                    name='Wire Transfers', line=dict(color='#CD5C5C', width=3)))
+            
+            fig.update_layout(
+                title="Top 3 Categories - 90 Day Trend",
+                xaxis_title="Time Period",
+                yaxis_title="Fraud Count",
+                height=350,
+                hovermode='x unified'
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
+            st.caption("🔍 Crypto fraud declining, shopping fraud increasing - possible shift in fraud tactics")
+        
+        else:
+            # Show hourly/daily pattern for shorter ranges
+            if time_range == "Last 24 Hours":
+                x_points = list(range(24))
+                x_label = "Hour of Day"
+            elif time_range == "Last 7 Days":
+                x_points = list(range(1, 8))
+                x_label = "Day"
+            else:  # 30 days
+                x_points = list(range(1, 31))
+                x_label = "Day"
+            
+            # Generate realistic patterns
+            crypto_pattern = np.random.poisson(fraud_counts[0] / len(x_points), len(x_points))
+            shopping_pattern = np.random.poisson(fraud_counts[1] / len(x_points), len(x_points))
+            
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=x_points, y=crypto_pattern, name='Crypto/ATM', 
+                               marker_color='#8B0000'))
+            fig.add_trace(go.Bar(x=x_points, y=shopping_pattern, name='Online Shopping',
+                               marker_color='#DC143C'))
+            
+            fig.update_layout(
+                title=f"Fraud Distribution - {time_range}",
+                xaxis_title=x_label,
+                yaxis_title="Fraud Count",
+                height=350,
+                barmode='stack'
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
+    
+    with col_trend2:
+        # Fraud rate by category
+        st.markdown("#### Fraud Rate by Category")
+        
+        # Simulate detection rates by category
+        detection_rates = {
+            'Crypto/ATM': 0.92,
+            'Online Shopping': 0.88,
+            'Wire Transfers': 0.85,
+            'Other': 0.87,
+            'Gas Stations': 0.90,
+            'Restaurants': 0.94
+        }
+        
+        fig = go.Figure(go.Bar(
+            y=list(detection_rates.keys()),
+            x=list(detection_rates.values()),
+            orientation='h',
+            marker_color=['#00C851' if v > 0.90 else '#ffbb33' if v > 0.85 else '#ff4444' 
+                         for v in detection_rates.values()],
+            text=[f'{v:.1%}' for v in detection_rates.values()],
+            textposition='auto'
+        ))
+        
+        fig.update_layout(
+            title="Detection Rate by Category",
+            xaxis_title="Detection Rate",
+            height=350,
+            showlegend=False,
+            xaxis=dict(range=[0.75, 1.0])
+        )
+        
+        fig.add_vline(x=0.85, line_dash="dash", line_color="orange", 
+                     annotation_text="Target: 85%")
+        
+        st.plotly_chart(fig, use_container_width=True)
+        st.caption("💡 Higher detection rates = more fraud caught in that category")
+    
+    st.markdown("---")
+    
+    # ============================================================================
+    # SYSTEM PERFORMANCE METRICS
+    # ============================================================================
+    
+    st.subheader("⚙️ System Performance Metrics")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("⚡ Latency Trends")
+        st.markdown("#### ⚡ Latency Trends")
         
         # Adjust number of days based on selection
         if time_range == "Last 24 Hours":
             x_data = list(range(24))
             x_label = "Hour"
-            latency_data = 45 + np.random.randn(24) * 5
+            num_points = 24
+            # Show some variation during business hours
+            latency_data = []
+            for hour in x_data:
+                if 9 <= hour <= 17:  # Business hours - slightly higher
+                    latency_data.append(48 + np.random.randn() * 5)
+                else:
+                    latency_data.append(42 + np.random.randn() * 4)
         elif time_range == "Last 7 Days":
             x_data = list(range(1, 8))
             x_label = "Day"
-            latency_data = 45 + np.random.randn(7) * 5
+            num_points = 7
+            latency_data = 45 + np.random.randn(7) * 4
         elif time_range == "Last 30 Days":
             x_data = list(range(1, 31))
             x_label = "Day"
+            num_points = 30
             latency_data = 45 + np.random.randn(30) * 5
         else:  # Last 90 Days
             x_data = list(range(1, 91))
             x_label = "Day"
-            latency_data = 45 + np.random.randn(90) * 5
+            num_points = 90
+            # Show gradual improvement over 90 days
+            latency_data = 50 - (np.arange(90) * 0.05) + np.random.randn(90) * 4
+        
+        # Ensure latency stays positive and realistic
+        latency_data = np.clip(latency_data, 25, 80)
         
         fig = go.Figure()
         fig.add_trace(go.Scatter(
@@ -620,54 +888,82 @@ elif page == "Analytics":
             mode='lines+markers',
             name='Latency',
             line=dict(color='#667eea', width=2),
+            fill='tozeroy',
+            fillcolor='rgba(102, 126, 234, 0.1)',
             hovertemplate=f'<b>{x_label} %{{x}}</b><br>Latency: %{{y:.1f}}ms<extra></extra>'
         ))
+        
         fig.add_hline(
             y=100,
             line_dash="dash",
             line_color="red",
-            annotation_text="SLA: 100ms"
+            annotation_text="SLA: 100ms",
+            annotation_position="right"
+        )
+        
+        # Add average line
+        avg_latency = np.mean(latency_data)
+        fig.add_hline(
+            y=avg_latency,
+            line_dash="dot",
+            line_color="green",
+            annotation_text=f"Avg: {avg_latency:.1f}ms",
+            annotation_position="left"
         )
         
         fig.update_layout(
             xaxis_title=x_label,
             yaxis_title="Latency (ms)",
-            height=300,
-            hovermode='x unified'
+            height=350,
+            hovermode='x unified',
+            showlegend=False
         )
         
         st.plotly_chart(fig, use_container_width=True)
         
-        # Add metric summary
-        avg_latency = np.mean(latency_data)
+        # Latency statistics
         max_latency = np.max(latency_data)
+        min_latency = np.min(latency_data)
         sla_violations = sum(1 for x in latency_data if x > 100)
         
-        st.caption(f"Avg: {avg_latency:.1f}ms | Max: {max_latency:.1f}ms | SLA Violations: {sla_violations}")
+        metric_col1, metric_col2, metric_col3 = st.columns(3)
+        metric_col1.metric("Avg", f"{avg_latency:.1f}ms")
+        metric_col2.metric("Max", f"{max_latency:.1f}ms")
+        metric_col3.metric("SLA Violations", sla_violations, delta_color="inverse")
+        
+        if avg_latency < 50:
+            st.success("✅ Excellent performance - well below SLA")
+        elif avg_latency < 75:
+            st.info("ℹ️ Good performance - within acceptable range")
+        elif avg_latency < 100:
+            st.warning("⚠️ Approaching SLA limit - monitor closely")
+        else:
+            st.error("🚨 SLA violations detected - action required")
     
     with col2:
-        st.subheader("📈 Accuracy Trends")
+        st.markdown("#### 📈 Accuracy Trends")
         
         # Generate accuracy data matching time range
         if time_range == "Last 24 Hours":
-            accuracy_data = 0.995 + np.random.randn(24) * 0.005
+            accuracy_data = 0.995 + np.random.randn(24) * 0.003
             x_data = list(range(24))
             x_label = "Hour"
         elif time_range == "Last 7 Days":
-            accuracy_data = 0.995 + np.random.randn(7) * 0.005
+            accuracy_data = 0.996 + np.random.randn(7) * 0.002
             x_data = list(range(1, 8))
             x_label = "Day"
         elif time_range == "Last 30 Days":
-            accuracy_data = 0.995 + np.random.randn(30) * 0.005
+            accuracy_data = 0.9955 + np.random.randn(30) * 0.003
             x_data = list(range(1, 31))
             x_label = "Day"
         else:  # Last 90 Days
-            accuracy_data = 0.995 + np.random.randn(90) * 0.005
+            # Show slight improvement over time
+            accuracy_data = 0.993 + (np.arange(90) * 0.00003) + np.random.randn(90) * 0.002
             x_data = list(range(1, 91))
             x_label = "Day"
         
         # Clip to realistic range
-        accuracy_data = np.clip(accuracy_data, 0.97, 1.0)
+        accuracy_data = np.clip(accuracy_data, 0.980, 1.0)
         
         fig = go.Figure()
         fig.add_trace(go.Scatter(
@@ -677,24 +973,312 @@ elif page == "Analytics":
             name='Accuracy',
             line=dict(color='#00C851', width=2),
             fill='tozeroy',
+            fillcolor='rgba(0, 200, 81, 0.1)',
             hovertemplate=f'<b>{x_label} %{{x}}</b><br>Accuracy: %{{y:.4f}}<extra></extra>'
         ))
+        
+        # Add target line
+        fig.add_hline(
+            y=0.985,
+            line_dash="dash",
+            line_color="orange",
+            annotation_text="Target: 98.5%",
+            annotation_position="right"
+        )
+        
+        # Add average line
+        avg_accuracy = np.mean(accuracy_data)
+        fig.add_hline(
+            y=avg_accuracy,
+            line_dash="dot",
+            line_color="darkgreen",
+            annotation_text=f"Avg: {avg_accuracy:.3f}",
+            annotation_position="left"
+        )
         
         fig.update_layout(
             xaxis_title=x_label,
             yaxis_title="Accuracy",
-            height=300,
+            height=350,
             yaxis=dict(range=[0.97, 1.0]),
-            hovermode='x unified'
+            hovermode='x unified',
+            showlegend=False
         )
         
         st.plotly_chart(fig, use_container_width=True)
         
-        # Add metric summary
-        avg_accuracy = np.mean(accuracy_data)
+        # Accuracy statistics
         min_accuracy = np.min(accuracy_data)
+        below_target = sum(1 for x in accuracy_data if x < 0.985)
         
-        st.caption(f"Avg: {avg_accuracy:.4f} | Min: {min_accuracy:.4f} | Target: ≥0.985")
+        metric_col1, metric_col2, metric_col3 = st.columns(3)
+        metric_col1.metric("Avg", f"{avg_accuracy:.4f}")
+        metric_col2.metric("Min", f"{min_accuracy:.4f}")
+        metric_col3.metric("Below Target", below_target, delta_color="inverse")
+        
+        if avg_accuracy >= 0.995:
+            st.success("✅ Exceptional accuracy maintained")
+        elif avg_accuracy >= 0.985:
+            st.info("ℹ️ Meeting accuracy targets")
+        else:
+            st.warning("⚠️ Below target - consider model refresh")
+    
+    st.markdown("---")
+    
+    # ============================================================================
+    # FRAUD DETECTION FUNNEL (NEW SECTION)
+    # ============================================================================
+    
+    st.subheader("🔍 Fraud Detection Funnel")
+    st.markdown(f"How transactions flow through the system ({time_range})")
+    
+    # Calculate funnel metrics
+    total_txns = total_transactions
+    flagged = int(total_txns * 0.02)  # 2% flagged for review
+    confirmed_fraud = total_frauds
+    false_positives = flagged - confirmed_fraud
+    auto_approved = total_txns - flagged
+    
+    # Create funnel visualization
+    col_funnel, col_funnel_stats = st.columns([2, 1])
+    
+    with col_funnel:
+        fig = go.Figure(go.Funnel(
+            y=['Total Transactions', 'Flagged for Review', 'Confirmed Fraud', 'Blocked'],
+            x=[total_txns, flagged, confirmed_fraud, confirmed_fraud],
+            textinfo="value+percent initial",
+            marker=dict(color=['#667eea', '#ffbb33', '#ff4444', '#8B0000']),
+            connector=dict(line=dict(color='gray', width=2))
+        ))
+        
+        fig.update_layout(
+            title="Transaction Processing Funnel",
+            height=400
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    
+    with col_funnel_stats:
+        st.markdown("#### Funnel Breakdown")
+        st.metric("Total Processed", f"{total_txns:,}")
+        st.metric("Flagged", f"{flagged:,}", f"{(flagged/total_txns)*100:.2f}%")
+        st.metric("True Fraud", f"{confirmed_fraud:,}", f"{(confirmed_fraud/flagged)*100:.1f}% precision")
+        st.metric("False Positives", f"{false_positives:,}", f"{(false_positives/total_txns)*100:.3f}%")
+        st.metric("Auto-Approved", f"{auto_approved:,}", f"{(auto_approved/total_txns)*100:.1f}%")
+        
+        st.markdown("---")
+        st.markdown("**Efficiency Metrics:**")
+        st.write(f"• Manual review rate: {(flagged/total_txns)*100:.2f}%")
+        st.write(f"• Auto-approval rate: {(auto_approved/total_txns)*100:.1f}%")
+        st.write(f"• Precision: {(confirmed_fraud/flagged)*100:.1f}%")
+    
+    st.markdown("---")
+    
+    # ============================================================================
+    # COMPARATIVE ANALYSIS (NEW SECTION)
+    # ============================================================================
+    
+    st.subheader("📊 Performance Comparison")
+    
+    col_comp1, col_comp2 = st.columns(2)
+    
+    with col_comp1:
+        st.markdown("#### Model Performance vs Baseline")
+        
+        comparison_metrics = ['Fraud Detection', 'False Positives', 'Response Time', 'Manual Reviews']
+        baseline_values = [78, 5.0, 85, 100]  # Baseline percentages/values
+        current_values = [87.34, 0.47, 45, 60]  # Our model
+        
+        fig = go.Figure()
+        
+        fig.add_trace(go.Bar(
+            name='Baseline System',
+            y=comparison_metrics,
+            x=baseline_values,
+            orientation='h',
+            marker_color='#ff9999',
+            text=[f'{v:.1f}' + ('%' if i < 2 else 'ms' if i == 2 else '%') 
+                  for i, v in enumerate(baseline_values)],
+            textposition='auto'
+        ))
+        
+        fig.add_trace(go.Bar(
+            name='Our Model',
+            y=comparison_metrics,
+            x=current_values,
+            orientation='h',
+            marker_color='#66b3ff',
+            text=[f'{v:.1f}' + ('%' if i < 2 else 'ms' if i == 2 else '%') 
+                  for i, v in enumerate(current_values)],
+            textposition='auto'
+        ))
+        
+        fig.update_layout(
+            barmode='group',
+            height=350,
+            xaxis_title="Value",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.caption("📈 Green bars show improvement areas")
+    
+    with col_comp2:
+        st.markdown("#### Cost Savings Impact")
+        
+        # Calculate savings based on time range
+        if time_range == "Last 24 Hours":
+            period_multiplier = 1
+            period_label = "Daily"
+        elif time_range == "Last 7 Days":
+            period_multiplier = 7
+            period_label = "Weekly"
+        elif time_range == "Last 30 Days":
+            period_multiplier = 30
+            period_label = "Monthly"
+        else:
+            period_multiplier = 90
+            period_label = "Quarterly"
+        
+        # Calculate daily savings
+        daily_fraud_prevented = 150 * 1.5  # ~1.5 additional frauds/day @ $150 each
+        daily_fp_reduction = 200 * 0.75  # ~200 fewer FPs/day @ $75 cost savings each
+        daily_total = daily_fraud_prevented + daily_fp_reduction
+        
+        period_savings = daily_total * period_multiplier
+        
+        savings_categories = ['Fraud Prevention', 'False Positive Reduction', 'Manual Review Savings']
+        savings_values = [
+            daily_fraud_prevented * period_multiplier,
+            daily_fp_reduction * period_multiplier,
+            100 * period_multiplier  # $100/day in manual review savings
+        ]
+        
+        fig = go.Figure(go.Waterfall(
+            name="Savings",
+            orientation="v",
+            measure=["relative", "relative", "relative", "total"],
+            x=savings_categories + ["Total Savings"],
+            textposition="outside",
+            text=[f"${v:,.0f}" for v in savings_values] + [f"${sum(savings_values):,.0f}"],
+            y=savings_values + [sum(savings_values)],
+            connector={"line": {"color": "rgb(63, 63, 63)"}},
+            decreasing={"marker": {"color": "#00C851"}},
+            increasing={"marker": {"color": "#00C851"}},
+            totals={"marker": {"color": "#0066cc"}}
+        ))
+        
+        fig.update_layout(
+            title=f"{period_label} Cost Savings",
+            height=350,
+            showlegend=False,
+            yaxis_title="Savings ($)"
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.metric(
+            f"Total {period_label} Savings",
+            f"${sum(savings_values):,.0f}",
+            f"Annualized: ${sum(savings_values) * (365/period_multiplier):,.0f}"
+        )
+    
+    st.markdown("---")
+    
+    # ============================================================================
+    # ALERT SUMMARY (NEW SECTION)
+    # ============================================================================
+    
+    st.subheader("🚨 Fraud Alert Summary")
+    
+    col_alert1, col_alert2, col_alert3, col_alert4 = st.columns(4)
+    
+    with col_alert1:
+        st.metric(
+            "High Risk Alerts",
+            f"{int(total_frauds * 0.45)}",
+            f"{((int(total_frauds * 0.45) / total_frauds) * 100):.1f}%"
+        )
+        st.caption("Score > 0.8")
+    
+    with col_alert2:
+        st.metric(
+            "Medium Risk Alerts", 
+            f"{int(total_frauds * 0.35)}",
+            f"{((int(total_frauds * 0.35) / total_frauds) * 100):.1f}%"
+        )
+        st.caption("Score 0.5-0.8")
+    
+    with col_alert3:
+        st.metric(
+            "Auto-Blocked",
+            f"{int(total_frauds * 0.45)}",
+            "100% fraud"
+        )
+        st.caption("Immediate action")
+    
+    with col_alert4:
+        st.metric(
+            "Manual Reviews",
+            f"{int(total_frauds * 0.35)}",
+            "-40% vs baseline",
+            delta_color="inverse"
+        )
+        st.caption("Analyst workload")
+    
+    # Recent high-risk cases
+    with st.expander("📋 View Recent High-Risk Cases"):
+        # Generate sample high-risk cases
+        num_samples = min(10, total_frauds)
+        
+        recent_cases = pd.DataFrame({
+            'Timestamp': [(datetime.now() - timedelta(hours=i*2)).strftime('%Y-%m-%d %H:%M') 
+                         for i in range(num_samples)],
+            'Merchant': np.random.choice(
+                ['BITCOIN ATM UNKNOWN', 'CRYPTO EXCHANGE UNVERIFIED', 'WIRE TRANSFER 9923',
+                 'ONLINE CASINO DEPOSIT', 'FOREIGN CODE 5521', 'UNKNOWN MERCHANT 7734'],
+                num_samples
+            ),
+            'Amount': [f"${x:,.2f}" for x in np.random.uniform(800, 5000, num_samples)],
+            'Risk Score': [f"{x:.3f}" for x in np.random.uniform(0.85, 0.99, num_samples)],
+            'Category': np.random.choice(['Crypto/ATM', 'Wire Transfers', 'Online Shopping'], num_samples),
+            'Status': np.random.choice(['BLOCKED', 'UNDER REVIEW'], num_samples, p=[0.7, 0.3])
+        })
+        
+        st.dataframe(recent_cases, use_container_width=True, hide_index=True)
+    
+    st.markdown("---")
+    
+    # ============================================================================
+    # EXPORT DATA OPTION
+    # ============================================================================
+    
+    col_export1, col_export2 = st.columns([3, 1])
+    
+    with col_export1:
+        st.markdown("### 📥 Export Analytics Data")
+        st.markdown("Download fraud analytics for further analysis or reporting")
+    
+    with col_export2:
+        # Create export data
+        export_df = pd.DataFrame({
+            'Category': categories,
+            'Fraud_Count': fraud_counts,
+            'Percentage': [f"{p:.2f}" for p in percentages],
+            'Time_Range': [time_range] * len(categories)
+        })
+        
+        csv = export_df.to_csv(index=False)
+        st.download_button(
+            label="📊 Download CSV",
+            data=csv,
+            file_name=f"fraud_analytics_{time_range.replace(' ', '_').lower()}_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+
+        
 # ================================================================================
 # PAGE 4: SYSTEM STATUS
 # ================================================================================
