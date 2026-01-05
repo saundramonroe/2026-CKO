@@ -27,7 +27,7 @@ jupyter notebook
 ## Project Structure
 - `src/` - Core Python modules (importable, reusable)
 - `notebooks/` - Jupyter notebooks for exploration and training
-- `app.py` - Streamlit dashboard for interactive demos
+- `app-fraud.py` - Streamlit dashboard for interactive demos
 - `data/` - Dataset location (not included in repo)
 
 ## Anaconda Value Demonstrated
