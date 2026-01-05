@@ -16,7 +16,7 @@ Download `creditcard.csv` from [Kaggle](https://www.kaggle.com/datasets/mlg-ulb/
 
 ### 3. Run Interactive Dashboard
 ```bash
-streamlit run app.py
+streamlit run app-fraud.py
 ```
 
 Or explore the notebooks:
@@ -42,5 +42,3 @@ jupyter notebook
 
 ## Related Resources
 - [Anaconda Documentation](https://docs.anaconda.com)
-- [Model Card](docs/model_card.md)
-- [Deployment Guide](docs/deployment.md)
