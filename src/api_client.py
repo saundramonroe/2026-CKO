@@ -15,7 +15,7 @@ import json
 import numpy as np
 import requests
 from datetime import datetime
-from .config import CONNECT_ENDPOINT, NAVIGATOR_ENDPOINT
+from .config import CONNECT_ENDPOINT, NAVIGATOR_ENDPOINT, LEGITIMATE_MERCHANTS, SUSPICIOUS_MERCHANTS
 
 
 # ================================================================================
@@ -98,7 +98,7 @@ class FraudDetectionAPI:
         # 3) Final fallback: Mock model
         latency = (time.time() - start_time) * 1000
         result = self._mock_predict(merchant, amount, features, latency)
-        self.last_source = "Mock Model (Fallback)"
+        self.last_source = result["source"]
         return result
     
     # ---------- Adapter 1: Anaconda Connect ----------
@@ -205,44 +205,95 @@ class FraudDetectionAPI:
             # Fall through to mock
             return None
     
-    # ---------- Fallback: Mock Model ----------
+    # ---------- Fallback: Mock Model (FIXED FOR REALISTIC SCORES) ----------
     
     def _mock_predict(self, merchant, amount, features, latency):
         """
-        Heuristic-based mock predictions
+        Heuristic-based mock predictions with realistic scoring
+        
+        IMPORTANT FIX: Now properly differentiates between:
+        - Known legitimate merchants (WALMART, AMAZON) → Low scores (0.05-0.25)
+        - Suspicious merchants (BITCOIN, CASINO) → High scores (0.65-0.95)
+        - Unknown merchants → Medium scores (0.30-0.60)
         
         Use Case: Demo continues even when APIs are unavailable
         
         Logic:
-            - Suspicious keywords → high probability
-            - High amounts → increased probability
-            - Add small random noise
+            1. Check if merchant is in LEGITIMATE_MERCHANTS list
+            2. Check for suspicious keywords
+            3. Adjust for amount
+            4. Add small random variation
         """
         merchant_upper = merchant.upper()
+        
+        # Define suspicious keywords
         suspicious_keywords = [
             'BITCOIN', 'CRYPTO', 'CASINO', 'WIRE', 
-            'FOREIGN', 'UNKNOWN', 'UNVERIFIED'
+            'FOREIGN', 'UNKNOWN', 'UNVERIFIED', 'GAMBLING',
+            'ATM UNKNOWN', 'DARK WEB', 'ANONYMOUS'
         ]
         
+        # Check merchant type
         is_suspicious = any(k in merchant_upper for k in suspicious_keywords)
+        is_known_legitimate = merchant in LEGITIMATE_MERCHANTS
         
-        # Base probability
-        base_prob = 0.75 if is_suspicious else 0.15
-        
-        # Amount factor
-        if amount > 2000:
-            amount_factor = 0.15
-        elif amount > 1000:
-            amount_factor = 0.10
-        elif amount > 500:
-            amount_factor = 0.05
+        # Determine base probability based on merchant type
+        if is_suspicious:
+            # High-risk merchants: crypto, casinos, wire transfers
+            base_prob = 0.72
+            
+        elif is_known_legitimate:
+            # Known legitimate merchants: Amazon, Walmart, Target, etc.
+            base_prob = 0.08  # Very low base score
+            
         else:
-            amount_factor = 0.0
+            # Unknown merchants (not in either list)
+            base_prob = 0.35  # Medium-low score
         
-        # Combine with noise
-        probability = base_prob + amount_factor + np.random.uniform(-0.05, 0.05)
+        # Amount-based adjustment
+        if is_known_legitimate:
+            # For legitimate merchants, amount has minimal impact
+            if amount > 2000:
+                amount_factor = 0.08  # Even high amounts stay relatively low
+            elif amount > 1000:
+                amount_factor = 0.05
+            elif amount > 500:
+                amount_factor = 0.02
+            else:
+                amount_factor = 0.0
+        else:
+            # For suspicious/unknown merchants, amount matters more
+            if amount > 3000:
+                amount_factor = 0.18
+            elif amount > 2000:
+                amount_factor = 0.15
+            elif amount > 1000:
+                amount_factor = 0.10
+            elif amount > 500:
+                amount_factor = 0.05
+            else:
+                amount_factor = 0.0
+        
+        # Combine factors with small random variation
+        probability = base_prob + amount_factor + np.random.uniform(-0.03, 0.03)
+        
+        # Apply realistic bounds based on merchant type
+        if is_known_legitimate:
+            # Legitimate merchants: Keep scores low (0.05-0.35 max)
+            probability = min(max(probability, 0.05), 0.35)
+            
+        elif is_suspicious:
+            # Suspicious merchants: Keep scores high (0.60-0.98)
+            probability = min(max(probability, 0.60), 0.98)
+            
+        else:
+            # Unknown merchants: Medium range (0.25-0.65)
+            probability = min(max(probability, 0.25), 0.65)
+        
+        # Final safety bounds
         probability = min(max(probability, 0.01), 0.99)
         
+        # Determine prediction
         prediction = 1 if probability > 0.5 else 0
         
         return {
@@ -303,7 +354,7 @@ class FraudDetectionAPI:
             results['connect'] = resp.status_code in [200, 400]
             print(f"  ✓ Anaconda Connect: {'Online' if results['connect'] else 'Offline'}")
         except Exception as e:
-            print(f"  ✗ Anaconda Connect: Offline ({str(e)[:40]}...)")
+            print(f"  ✗ Anaconda Connect: Offline")
         
         # Test Navigator
         try:
@@ -319,7 +370,7 @@ class FraudDetectionAPI:
             results['navigator'] = resp.status_code in [200, 400]
             print(f"  ✓ AI Navigator: {'Online' if results['navigator'] else 'Offline'}")
         except Exception as e:
-            print(f"  ✗ AI Navigator: Offline ({str(e)[:40]}...)")
+            print(f"  ✗ AI Navigator: Offline")
         
         print(f"  ✓ Mock Model: Always available (fallback)")
         
