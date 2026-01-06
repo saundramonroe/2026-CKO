@@ -1,3 +1,4 @@
+# pylint: disable=broad-exception-caught
 """
 Fraud Detection Dashboard - Streamlit Application
 
