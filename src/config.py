@@ -16,7 +16,7 @@ Anaconda Value: Single source of truth for reproducible experiments
 # ================================================================================
 
 # Anaconda Connect - Production deployed model
-CONNECT_ENDPOINT = "https://demo.sb.anacondaconnect.com/api/ai/inference/serve/c47e6c4f-5aa8-4b0a-b9e9-d2f301cea064"
+CONNECT_ENDPOINT = "https://demo.sb.anacondaconnect.com/api/ai/inference/serve/424c8a7d-5d52-4afb-bc60-81c23e837134"
 
 # AI Navigator - Local LLM server
 NAVIGATOR_ENDPOINT = "http://127.0.0.1:8080/v1/chat/completions"

@@ -2445,9 +2445,9 @@ elif page == "Analytics":
             use_container_width=True
         )
 
-# ================================================================================
-# PAGE 4: SYSTEM STATUS
-# ================================================================================
+# ============================================================================
+# Page 4: System Status
+# ============================================================================
 
 elif page == "System Status":
     st.title("System Status & Monitoring")
@@ -2456,38 +2456,79 @@ elif page == "System Status":
     st.markdown("---")
     
     # ============================================================================
+    # HELPER FUNCTION FOR JSON EXTRACTION
+    # ============================================================================
+    
+    def extract_json_from_text(text):
+        """Extract JSON from response that may have extra text"""
+        import json
+        
+        # Try direct parsing first
+        try:
+            return json.loads(text)
+        except:
+            pass
+        
+        # Try to find JSON in the text
+        text = text.strip()
+        
+        # Look for JSON object
+        if '{' in text:
+            json_start = text.index('{')
+            json_text = text[json_start:]
+            
+            # Find matching closing brace
+            brace_count = 0
+            for i, char in enumerate(json_text):
+                if char == '{':
+                    brace_count += 1
+                elif char == '}':
+                    brace_count -= 1
+                    if brace_count == 0:
+                        try:
+                            return json.loads(json_text[:i+1])
+                        except:
+                            pass
+        
+        return None
+    
+    # ============================================================================
     # API CONNECTION TESTING
     # ============================================================================
     
-    st.subheader(" API Connection Testing")
+    st.subheader("API Connection Testing")
     
     test_col1, test_col2, test_col3 = st.columns(3)
     
     with test_col1:
-        test_connect = st.button(" Test Anaconda Connect", use_container_width=True)
+        test_connect = st.button("Test Anaconda Connect", use_container_width=True)
     
     with test_col2:
-        test_navigator = st.button(" Test AI Navigator", use_container_width=True)
+        test_navigator = st.button("Test AI Navigator", use_container_width=True)
     
     with test_col3:
-        test_all = st.button(" Test All Endpoints", use_container_width=True, type="primary")
+        test_all = st.button("Test All Endpoints", use_container_width=True, type="primary")
     
     st.markdown("---")
     
     # Test Anaconda Connect
     if test_connect or test_all:
-        st.markdown("###  Anaconda Connect (Production - AI Catalyst)")
+        st.markdown("### Anaconda Connect (Production - AI Catalyst)")
         
         with st.spinner("Testing Anaconda Connect..."):
             try:
                 test_payload = {
                     "data": [[0] * 30],
-                    "merchant_description": ["TEST"],
+                    "merchant_description": ["CONNECTION_TEST"],
                     "amount": [100.0]
                 }
                 
                 start_time = time.time()
-                resp = api_client.session.post(api_client.connect_endpoint, json=test_payload, timeout=10)
+                resp = api_client.session.post(
+                    api_client.connect_endpoint, 
+                    json=test_payload, 
+                    timeout=10
+                )
                 latency = (time.time() - start_time) * 1000
                 
                 if resp.status_code == 200:
@@ -2495,18 +2536,30 @@ elif page == "System Status":
                     st.info(f" Response time: {latency:.1f}ms")
                     st.success(" Production AI Catalyst endpoint available")
                     
-                    with st.expander(" View Response"):
-                        st.json(resp.json())
+                    # Use local helper function
+                    parsed_data = extract_json_from_text(resp.text)
+                    
+                    if parsed_data:
+                        st.success(" Valid JSON response received")
+                        with st.expander(" View Response"):
+                            st.json(parsed_data)
+                    else:
+                        st.warning(" Response received but could not parse JSON")
+                        with st.expander(" View Raw Response"):
+                            st.code(resp.text[:2000], language='text')
+                            st.caption(f"Content-Type: {resp.headers.get('content-type', 'unknown')}")
+                            
                 else:
-                    st.warning(f" Status code: {resp.status_code}")
+                    st.error(f" Status code: {resp.status_code}")
                     
             except requests.exceptions.Timeout:
                 st.error(" Connection Timeout (>10s)")
             except requests.exceptions.ConnectionError:
                 st.error(" Cannot Reach Endpoint")
-                st.caption("Check internet connection")
+                st.code(f"URL: {api_client.connect_endpoint}")
             except Exception as e:
-                st.error(f" Error: {str(e)}")
+                st.error(f" Error: {type(e).__name__}")
+                st.code(str(e))
         
         st.markdown("---")
     
@@ -2519,13 +2572,17 @@ elif page == "System Status":
                 test_payload = {
                     "messages": [
                         {"role": "system", "content": "Return only JSON."},
-                        {"role": "user", "content": "Return {\"probability\": 0.5}"}
+                        {"role": "user", "content": 'Return {"probability": 0.5}'}
                     ],
                     "temperature": 0.0
                 }
                 
                 start_time = time.time()
-                resp = api_client.session.post(api_client.navigator_endpoint, json=test_payload, timeout=10)
+                resp = api_client.session.post(
+                    api_client.navigator_endpoint, 
+                    json=test_payload, 
+                    timeout=10
+                )
                 latency = (time.time() - start_time) * 1000
                 
                 if resp.status_code == 200:
@@ -2533,10 +2590,18 @@ elif page == "System Status":
                     st.info(f" Response time: {latency:.1f}ms")
                     st.success(" Local Qwen 2.5 7B responding")
                     
-                    with st.expander(" View Response"):
-                        st.json(resp.json())
+                    parsed_data = extract_json_from_text(resp.text)
+                    
+                    if parsed_data:
+                        st.success(" Valid JSON response received")
+                        with st.expander(" View Response"):
+                            st.json(parsed_data)
+                    else:
+                        st.warning(" Response received but could not parse JSON")
+                        with st.expander(" View Raw Response"):
+                            st.code(resp.text[:2000], language='text')
                 else:
-                    st.warning(f" Status code: {resp.status_code}")
+                    st.error(f" Status code: {resp.status_code}")
                     
             except requests.exceptions.Timeout:
                 st.error(" Connection Timeout (>10s)")
@@ -2553,7 +2618,7 @@ elif page == "System Status":
         st.markdown("###  Complete System Test")
         
         with st.spinner("Testing full fallback chain..."):
-            result = api_client.predict("TEST CONNECTION", 100.0)
+            result = api_client.predict("CONNECTION_TEST", 100.0)
         
         if result['success']:
             source = result.get('source', 'Unknown')
@@ -2561,7 +2626,7 @@ elif page == "System Status":
             if 'Connect' in source:
                 st.success(" **System Status: OPTIMAL**")
                 st.success(f" Using: {source}")
-                st.info(f" Latency: {result['latency_ms']:.1f}ms")
+                st.info(f" Latency: {result.get('latency_ms', 0):.1f}ms")
             elif 'Navigator' in source:
                 st.info(" **System Status: GOOD (Fallback Active)**")
                 st.info(f" Using: {source}")
@@ -2570,6 +2635,9 @@ elif page == "System Status":
                 st.warning(" **System Status: DEGRADED**")
                 st.warning(f" Using: {source}")
                 st.caption("Both APIs unavailable - using mock fallback")
+        else:
+            st.error(" **System Test Failed**")
+            st.error(f"Error: {result.get('error', 'Unknown')}")
         
         st.markdown("---")
     
@@ -2583,7 +2651,10 @@ elif page == "System Status":
     
     with col1:
         st.markdown("###  Anaconda Connect")
-        st.code(CONNECT_ENDPOINT[:70] + "...")
+        endpoint_display = api_client.connect_endpoint
+        if len(endpoint_display) > 70:
+            endpoint_display = endpoint_display[:70] + "..."
+        st.code(endpoint_display)
         st.markdown("""
         **Configuration:**
         - Platform: Anaconda AI Catalyst
@@ -2595,7 +2666,7 @@ elif page == "System Status":
         st.markdown("---")
         
         st.markdown("###  AI Navigator")
-        st.code(NAVIGATOR_ENDPOINT)
+        st.code(api_client.navigator_endpoint)
         st.markdown("""
         **Configuration:**
         - Platform: Local server
@@ -2607,7 +2678,7 @@ elif page == "System Status":
     with col2:
         st.markdown("###  Current Status")
         
-        source = getattr(api_client, "last_source", "Not tested")
+        source = getattr(api_client, 'last_source', 'Not tested')
         
         if "Connect" in source:
             st.success("**Active:** Anaconda Connect ")
@@ -2622,14 +2693,12 @@ elif page == "System Status":
             st.info("**Status:** No tests run yet")
         
         st.markdown("---")
-        st.markdown("###  Fallback Order")
-        st.code("""
-1. Anaconda Connect (Production)
-   ↓
-2. AI Navigator (Local)
-   ↓
-3. Mock Model (Always available)
-        """)
+        st.markdown("### Fallback Order")
+        st.code("""1. Anaconda Connect (Production)
+            ↓ If unavailable
+        2. AI Navigator (Local)
+            ↓ If unavailable
+        3. Mock Model (Always available)""")
     
     st.markdown("---")
     
