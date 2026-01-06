@@ -1,3 +1,4 @@
+# pylint: disable=simplifiable-if-expression
 """
 Configuration for Fraud Detection System
 
