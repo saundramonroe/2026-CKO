@@ -2463,10 +2463,11 @@ elif page == "System Status":
         """Extract JSON from response that may have extra text"""
         import json
         
+       
         # Try direct parsing first
         try:
             return json.loads(text)
-        except:
+        except: 
             pass
         
         # Try to find JSON in the text
