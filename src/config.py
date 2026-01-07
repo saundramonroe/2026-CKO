@@ -15,6 +15,19 @@ Anaconda Value: Single source of truth for reproducible experiments
 # ================================================================================
 # API ENDPOINTS
 # ================================================================================
+# API Authentication Token for Anaconda Connect
+API_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3OTkzNDY3MjMsImtpZCI6IjMxIiwic2NvcGVzIjpbImNsb3VkOnJlYWQiLCJjbG91ZDp3cml0ZSIsInJlcG86cmVhZCIsInJlcG86d3JpdGUiXSwic3ViIjoiNzU5ZTgyNjUtZDlhZi00ZDRjLWI4NDQtYzZmMjk1Y2M2MzY4IiwidmVyIjoiYXBpOjEifQ.lKRLL1GYU3iKpATF4wXoT08a0L_3NT6OofL4P72xbOIG_9vMXWhsoi5RN40UsACn2wQZcJA_tMsf0JEfZiu7l2ACkO-Z28xSkeqCfPi8q15ZY6M0tYFMBrezRKdBa2Lhd1ULG6wGaJdBQZqnJnnhUa-oIV-cY43B0Y9x7EJoZKTPgDaPcmGNo0UJ-FM7INsiCxZUssUkY_9_92eh2O4m57_aJ190FNXnr11s6nbTynmnmKz3hK67WKjblpk-BVhKjnL9pCcyXkfWDVXviwNxlJwVCXHX7t-HbK1orXueLS-Vd91vZzgurhj6zoi9Ww_pJ0mi9_tmLyhHSXfFymO-Iw"
+
+# Export it
+__all__ = [
+    'CONNECT_ENDPOINT', 
+    'NAVIGATOR_ENDPOINT', 
+    'API_TOKEN',
+    'DEMO_MODE',
+    'LEGITIMATE_MERCHANTS',
+    'SUSPICIOUS_MERCHANTS'
+]
+
 
 # Anaconda Connect - Production deployed model
 CONNECT_ENDPOINT = "https://demo.sb.anacondaconnect.com/api/ai/inference/serve/424c8a7d-5d52-4afb-bc60-81c23e837134"
