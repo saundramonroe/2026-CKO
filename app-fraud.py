@@ -437,14 +437,14 @@ if page == "Dashboard":
         st.subheader(" Model Performance")
         
         metrics = ['Accuracy', 'Precision', 'Recall', 'F1-Score']
-        scores = [0.9985, 0.9421, 0.8734, 0.9063]
+        scores = [0.9994, 0.7333, 0.8462, 0.7857]
         
         # Enhanced descriptions for hover
         metric_info = {
-            'Accuracy': '99.85% overall correctness<br><i>Correct predictions / Total transactions</i>',
-            'Precision': '94.21% fraud confidence<br><i>When we flag fraud, we\'re right 94% of the time</i><br><b>→ Fewer false alarms = happier customers</b>',
-            'Recall': '87.34% detection rate<br><i>We catch 87 out of 100 actual frauds</i><br><b>→ More fraud caught = more money saved</b>',
-            'F1-Score': '90.63% balanced performance<br><i>Harmonic mean of Precision & Recall</i><br><b>→ Best of both worlds</b>'
+            'Accuracy': '99.94% overall correctness<br><i>Correct predictions / Total transactions</i>',
+            'Precision': '73.33% fraud confidence<br><i>When we flag fraud, we\'re right 73% of the time</i><br><b>→ Some false alarms, but much better than baseline</b>',  # ← UPDATE
+            'Recall': '84.62% detection rate<br><i>We catch 84.6 out of 100 actual frauds</i><br><b>→ More fraud caught than baseline (78%)</b>',  # ← UPDATE
+            'F1-Score': '78.57% balanced performance<br><i>Harmonic mean of Precision & Recall</i><br><b>→ Improved detection with acceptable false positives</b>'  # ← UPDATE
         }
         
         fig = go.Figure(go.Bar(
@@ -1999,8 +1999,8 @@ elif page == "Analytics":
     actual_legitimate = total_txns - actual_frauds
 
     # Model performance metrics (from our model)
-    model_recall = 0.8734  # 87.34% - catches this much fraud
-    model_precision = 0.9421  # 94.21% - this accurate when flagging
+    model_recall = 0.8462  # 84.62% - catches this much fraud
+    model_precision = 0.7333  # 73.33% - this accurate when flagging    
 
     # Calculate confusion matrix values
     true_positives = int(actual_frauds * model_recall)  # Fraud correctly caught
