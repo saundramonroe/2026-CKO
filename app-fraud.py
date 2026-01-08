@@ -167,11 +167,22 @@ class FraudDetectionAPI:
         return r
 
     def _try_connect_inference(self, merchant, amount, features):
-        payload = {
+        data_context = json.dumps({
             "data": [features.tolist()],
             "merchant_description": [merchant],
             "amount": [float(amount)]
+        })
+
+        result_struct = json.dumps({
+            "prediction": "",
+            "probability": "",
+        })
+        
+        payload = {
+            "prompt": f"Fraud detection for merchant: `{data_context}`. Predict the fraud probability and return JSON in this structure `{result_struct}`.",
+            "max_tokens": 1000
         }
+
         try:
             resp = self.session.post(self.connect_endpoint, json=payload, timeout=10)
             if resp.status_code != 200:
