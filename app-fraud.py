@@ -2520,7 +2520,7 @@ elif page == "System Status":
     test_col1, test_col2, test_col3 = st.columns(3)
     
     with test_col1:
-        test_connect = st.button(" Test Anaconda Connect", use_container_width=True)
+        test_connect = st.button(" Test AI Catalyst", use_container_width=True)
     
     with test_col2:
         test_navigator = st.button(" Test AI Navigator", use_container_width=True)
@@ -2535,7 +2535,7 @@ elif page == "System Status":
     # ============================================================================
     
     if test_connect or test_all:
-        st.markdown("### Anaconda Connect (Production - AI Catalyst)")
+        st.markdown("### AI Catalyst - Production Server")
         
         with st.spinner("Testing Anaconda Connect..."):
             try:
@@ -2838,7 +2838,7 @@ elif page == "System Status":
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("###  Anaconda Connect")
+        st.markdown("###  AI Catalyst")
         endpoint_display = api_client.connect_endpoint
         if len(endpoint_display) > 70:
             endpoint_display = endpoint_display[:67] + "..."
@@ -2924,8 +2924,8 @@ elif page == "System Status":
         st.markdown("""
         <div style='background-color: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea;'>
             <div style='margin-bottom: 15px;'>
-                <strong style='font-size: 16px;'>1️ Anaconda Connect</strong><br>
-                <span style='color: #666; font-size: 14px;'>Production AI Catalyst deployment</span><br>
+                <strong style='font-size: 16px;'>1️ AI Catalyst</strong><br>
+                <span style='color: #666; font-size: 14px;'>Production deployments</span><br>
                 <span style='color: #666; font-size: 12px;'>⚠️ Requires authentication</span>
             </div>
             <div style='text-align: center; color: #999; margin: 10px 0;'>↓ If unavailable or not authenticated</div>
@@ -2983,8 +2983,8 @@ elif page == "System Status":
         with diag_col1:
             st.markdown("**Endpoints Configured:**")
             st.code(f"""
-            Connect: {api_client.connect_endpoint[:160]}...
-            Navigator: {api_client.navigator_endpoint}
+            AI Catalyst: {api_client.connect_endpoint[:160]}...
+            AI Navigator: {api_client.navigator_endpoint}
             """)
         
         with diag_col2:
@@ -2992,12 +2992,12 @@ elif page == "System Status":
             st.code(f"""
             Last Source: {api_client.last_source}
             Session Active: Yes
-            Timeout: 10s (Connect), 30s (Navigator)
+            Timeout: 20s (AI Catalyst), 30s (AI Navigator)
             """)
         
         st.markdown("---")
         st.markdown("**Expected Behavior:**")
-        st.markdown("-  Anaconda Connect: Requires auth token (HTML response normal)")
+        st.markdown("-  AI Catalyst: Requires auth token (HTML response normal)")
         st.markdown("-  AI Navigator: Working as a local LLM inference")
         st.markdown("-  Mock Model: Always available as ultimate fallback")
         st.markdown("")
