@@ -17,16 +17,17 @@ Anaconda Value:
 - Production-ready interface
 """
 
-import streamlit as st
+import json
+import random
+import time
+from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
-from datetime import datetime, timedelta
-import time
-import random
 import requests
-import json
+import streamlit as st
+
 
 # Import configuration
 from src.config import (
@@ -223,8 +224,8 @@ class FraudDetectionAPI:
         except Exception:
             return None
 
-    def _mock_predict(self, merchant, amount, features, latency):
-        """FIXED: Realistic scoring for legitimate vs suspicious merchants"""
+    def _mock_predict(self, merchant, amount, _features, latency):
+
         merchant_upper = merchant.upper()
         
         suspicious_keywords = ['BITCOIN', 'CRYPTO', 'CASINO', 'WIRE', 'FOREIGN', 'UNKNOWN', 'UNVERIFIED']
@@ -300,14 +301,14 @@ class FraudDetectionAPI:
             test_payload = {"data": [[0] * 30], "merchant_description": ["TEST"], "amount": [100.0]}
             resp = self.session.post(self.connect_endpoint, json=test_payload, timeout=5)
             results['connect'] = resp.status_code in [200, 400]
-        except:
+        except(requests.exceptions.RequestException, Exception):
             pass
         
         try:
             test_payload = {"messages": [{"role": "user", "content": "test"}], "temperature": 0.0}
             resp = self.session.post(self.navigator_endpoint, json=test_payload, timeout=5)
             results['navigator'] = resp.status_code in [200, 400]
-        except:
+        except(requests.exceptions.RequestException, Exception):
             pass
         
         return results
@@ -2489,37 +2490,31 @@ elif page == "System Status":
     # HELPER FUNCTION FOR JSON EXTRACTION
     # ============================================================================
     
-    def extract_json_from_text(text):
-        """Extract JSON from response that may have extra text"""
-        import json
-        
-        # Try direct parsing first
+    def extract_json_from_text(text: str):
         try:
             return json.loads(text)
-        except:
+        except (TypeError, ValueError, json.JSONDecodeError):
             pass
-        
-        # Try to find JSON in the text
+
         text = text.strip()
-        
-        # Look for JSON object
-        if '{' in text:
-            json_start = text.index('{')
-            json_text = text[json_start:]
-            
-            # Find matching closing brace
-            brace_count = 0
-            for i, char in enumerate(json_text):
-                if char == '{':
-                    brace_count += 1
-                elif char == '}':
-                    brace_count -= 1
-                    if brace_count == 0:
-                        try:
-                            return json.loads(json_text[:i+1])
-                        except:
-                            pass
-        
+        if "{" not in text:
+            return None
+
+        json_start = text.index("{")
+        json_text = text[json_start:]
+
+        brace_count = 0
+        for i, char in enumerate(json_text):
+            if char == "{":
+                brace_count += 1
+            elif char == "}":
+                brace_count -= 1
+                if brace_count == 0:
+                    try:
+                        return json.loads(json_text[: i + 1])
+                    except (TypeError, ValueError, json.JSONDecodeError):
+                        return None
+
         return None
     
     # ============================================================================
@@ -2542,7 +2537,7 @@ elif page == "System Status":
     st.markdown("---")
     
     # ============================================================================
-    # TEST ANACONDA CONNECT
+    # TEST ANACONDA AI CATALYST
     # ============================================================================
     
     if test_connect or test_all:
@@ -2582,7 +2577,7 @@ elif page == "System Status":
                             st.info(" **App will use AI Navigator or Mock fallback for demos**")
                             
                             with st.expander(" Why You See This"):
-                                st.markdown("""
+                                st.markdown(f"""
                                 **This is NORMAL for demo environments without production credentials.**
                                 
                                 **What's Happening:**
@@ -2602,7 +2597,7 @@ elif page == "System Status":
                                 - Once added, Connect becomes primary endpoint
                                 
                                 **Current Demo Status:** FULLY FUNCTIONAL using AI Navigator
-                                """)
+                                """, unsafe_allow_html=True)
                             
                             with st.expander(" View HTML Response"):
                                 st.code(resp.text[:1500], language='html')
@@ -2702,7 +2697,8 @@ elif page == "System Status":
                                     content_json = json.loads(content_text)
                                     if 'probability' in content_json:
                                         probability_found = content_json['probability']
-                                except:
+                                except (ValueError, TypeError, json.JSONDecodeError):
+                                    # Could not parse content as JSON - probability_found stays None
                                     pass
                         
                         # Display full response
@@ -2994,7 +2990,7 @@ elif page == "System Status":
         with diag_col1:
             st.markdown("**Endpoints Configured:**")
             st.code(f"""
-            AI Catalyst: {api_client.connect_endpoint[:160]}...
+            AI Catalyst: {api_client.connect_endpoint[:60]}...
             AI Navigator: {api_client.navigator_endpoint}
             """)
         
@@ -3012,7 +3008,7 @@ elif page == "System Status":
         st.markdown("-  AI Navigator: Working as a local LLM inference")
         st.markdown("-  Mock Model: Always available as ultimate fallback")
         st.markdown("")
-        st.success("Your fraud detection system is working as designed! Navigator is providing the fraud analysis.")
+        st.success("Navigator is providing the fraud analysis.")
 
 # ================================================================================
 # FOOTER
