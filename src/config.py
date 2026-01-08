@@ -30,7 +30,16 @@ __all__ = [
 
 
 # Anaconda Connect - Production deployed model
-CONNECT_ENDPOINT = "https://demo.sb.anacondaconnect.com/api/ai/inference/serve/424c8a7d-5d52-4afb-bc60-81c23e837134"
+
+# Option 1: Remove /v1/completions, add /predict
+#CONNECT_ENDPOINT = "https://demo.sb.anacondaconnect.com/api/ai/inference/serve/424c8a7d-5d52-4afb-bc60-81c23e83713/predict"
+
+# Option 2: Replace /v1/completions with /v1/predict
+CONNECT_ENDPOINT = "https://demo.sb.anacondaconnect.com/api/ai/inference/serve/424c8a7d-5d52-4afb-bc60-81c23e83713/v1/predict"
+
+# Option 3: Just the base URL without any suffix
+# CONNECT_ENDPOINT = "https://demo.sb.anacondaconnect.com/api/ai/inference/serve/424c8a7d-5d52-4afb-bc60-81c23e83713"
+
 
 # AI Navigator - Local LLM server
 NAVIGATOR_ENDPOINT = "http://127.0.0.1:8080/v1/chat/completions"

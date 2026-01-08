@@ -1539,6 +1539,7 @@ elif page == "Analytics":
         "Last 90 Days": {
             'counts': [595, 525, 385, 280, 175, 110],  # Total: 2,070 frauds (~23/day)
             'total_transactions': 1128960,
+            
             'note': '📉 Balanced fraud distribution over quarter',
             'insight': 'Crypto fraud decreased 6% quarter-over-quarter (better controls)',
             'recommendation': 'Maintain current crypto safeguards, monitor shopping trends',
@@ -2982,7 +2983,7 @@ elif page == "System Status":
         with diag_col1:
             st.markdown("**Endpoints Configured:**")
             st.code(f"""
-            Connect: {api_client.connect_endpoint[:60]}...
+            Connect: {api_client.connect_endpoint[:160]}...
             Navigator: {api_client.navigator_endpoint}
             """)
         
@@ -2997,10 +2998,10 @@ elif page == "System Status":
         st.markdown("---")
         st.markdown("**Expected Behavior:**")
         st.markdown("-  Anaconda Connect: Requires auth token (HTML response normal)")
-        st.markdown("-  AI Navigator: Working perfectly for local LLM inference")
+        st.markdown("-  AI Navigator: Working as a local LLM inference")
         st.markdown("-  Mock Model: Always available as ultimate fallback")
         st.markdown("")
-        st.success("Your fraud detection system is working as designed! Navigator is providing excellent fraud analysis.")
+        st.success("Your fraud detection system is working as designed! Navigator is providing the fraud analysis.")
 
 # ================================================================================
 # FOOTER
