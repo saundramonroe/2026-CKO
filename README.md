@@ -8,7 +8,7 @@ Enterprise-grade fraud detection combining traditional ML (XGBoost) with LLM int
 ### 1. Set Up Environment (Anaconda Desktop)
 ```bash
 conda env create -f environment.yml
-conda activate fraud-detection-quen
+conda activate fraud-detection-qwen
 ```
 
 ### 2. Download Dataset
