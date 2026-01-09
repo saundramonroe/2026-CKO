@@ -8,7 +8,7 @@ Enterprise-grade fraud detection combining traditional ML (XGBoost) with LLM int
 ### 1. Set Up Environment (Anaconda Desktop)
 ```bash
 conda env create -f environment.yml
-conda activate fraud-detection-demo
+conda activate fraud-detection-quen
 ```
 
 ### 2. Download Dataset
@@ -16,18 +16,22 @@ Download `creditcard.csv` from [Kaggle](https://www.kaggle.com/datasets/mlg-ulb/
 
 ### 3. Run Interactive Dashboard
 ```bash
-streamlit run app-fraud.py
+streamlit run fraud-detection-dash.py
 ```
 
 Or explore the notebooks:
 ```bash
 jupyter notebook
+    01_data_exploration.ipynb 
+    02_model_training.ipynb
+    03_evaluation.ipynb
+    04_interactive_demo.ipynb
 ```
 
 ## Project Structure
 - `src/` - Core Python modules (importable, reusable)
 - `notebooks/` - Jupyter notebooks for exploration and training
-- `app-fraud.py` - Streamlit dashboard for interactive demos
+- `fraud-detection-dash.py` - Streamlit dashboard for interactive demos
 - `data/` - Dataset location (not included in repo)
 
 ## Anaconda Value Demonstrated
