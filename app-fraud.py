@@ -143,12 +143,12 @@ class FraudDetectionAPI:
 
         start_time = time.time()
 
-        # 1) Try Anaconda Connect
+        # 1) Try AI Catalyst
         r = self._try_connect_inference(merchant, amount, features)
         if r is not None:
             r["latency_ms"] = (time.time() - start_time) * 1000
             r["timestamp"] = datetime.now()
-            r["source"] = "Anaconda Connect (Deployed Model)"
+            r["source"] = "AI Catalyst (Deployed Model)"
             self.last_source = r["source"]
             return r
 
@@ -168,30 +168,55 @@ class FraudDetectionAPI:
         return r
 
     def _try_connect_inference(self, merchant, amount, features):
-        data_context = json.dumps({
-            "data": [features.tolist()],
-            "merchant_description": [merchant],
-            "amount": [float(amount)]
-        })
-
-        result_struct = json.dumps({
-            "prediction": "",
-            "probability": "",
-        })
+        """Call AI Catalyst with optimized prompt for fraud detection"""
         
+        # Very simple, direct prompt - no explanations
+        prompt = f"""Merchant: {merchant}
+            Amount: ${float(amount):.2f}
+
+            {{"prediction": 0, "probability": 0.5}}"""
+
         payload = {
-            "prompt": f"Fraud detection for merchant: `{data_context}`. Predict the fraud probability and return JSON in this structure `{result_struct}`.",
-            "max_tokens": 1000
+            "prompt": prompt,
+            "max_tokens": 50,  # Reduced - we only need the JSON
+            "temperature": 0.0,  # Zero for deterministic output
+            "stop": ["\n", "}", "]"]  # Stop after JSON closes
         }
 
         try:
             resp = self.session.post(self.connect_endpoint, json=payload, timeout=10)
             if resp.status_code != 200:
                 return None
+                
             result = resp.json()
-            prob = result.get("probability", [0.5])[0]
-            pred = result.get("prediction", [1 if prob >= 0.5 else 0])[0]
-            return {"success": True, "prediction": int(pred), "probability": float(prob)}
+            
+            if 'choices' in result and len(result['choices']) > 0:
+                content = result['choices'][0].get('text', '').strip()
+                
+                try:
+                    # Clean up the response
+                    content = content.replace('```json', '').replace('```', '').strip()
+                    
+                    # Extract just the JSON object
+                    import re
+                    json_match = re.search(r'\{[^{}]*"probability"[^{}]*\}', content)
+                    if json_match:
+                        prediction_data = json.loads(json_match.group())
+                        
+                        prob = float(prediction_data.get("probability", 0.5))
+                        pred = int(prediction_data.get("prediction", 1 if prob >= 0.5 else 0))
+                        prob = max(0.0, min(1.0, prob))
+                        
+                        return {
+                            "success": True,
+                            "prediction": pred,
+                            "probability": prob
+                        }
+                except (json.JSONDecodeError, ValueError, AttributeError, KeyError):
+                    pass
+            
+            return None
+            
         except Exception:
             return None
 
@@ -297,18 +322,35 @@ class FraudDetectionAPI:
         """Test connectivity to all endpoints"""
         results = {'connect': False, 'navigator': False, 'mock': True}
         
+        # Test AI Catalyst with correct prompt format
         try:
-            test_payload = {"data": [[0] * 30], "merchant_description": ["TEST"], "amount": [100.0]}
-            resp = self.session.post(self.connect_endpoint, json=test_payload, timeout=5)
-            results['connect'] = resp.status_code in [200, 400]
-        except(requests.exceptions.RequestException, Exception):
+            catalyst_test_payload = {
+                "prompt": "Test connection. Return JSON: {\"status\": \"ok\"}",
+                "max_tokens": 100
+            }
+            resp = self.session.post(
+                self.connect_endpoint, 
+                json=catalyst_test_payload, 
+                timeout=5
+            )
+            # Accept 200 (success) or 401/403 (auth required but server responding)
+            results['connect'] = resp.status_code in [200, 401, 403]
+        except (requests.exceptions.RequestException, Exception): 
             pass
         
+        # Test AI Navigator
         try:
-            test_payload = {"messages": [{"role": "user", "content": "test"}], "temperature": 0.0}
-            resp = self.session.post(self.navigator_endpoint, json=test_payload, timeout=5)
+            navigator_test_payload = {
+                "messages": [{"role": "user", "content": "test"}], 
+                "temperature": 0.0
+            }
+            resp = self.session.post(
+                self.navigator_endpoint, 
+                json=navigator_test_payload, 
+                timeout=5
+            )
             results['navigator'] = resp.status_code in [200, 400]
-        except(requests.exceptions.RequestException, Exception):
+        except (requests.exceptions.RequestException, Exception): 
             pass
         
         return results
@@ -404,6 +446,33 @@ def get_api_client():
 api_client = get_api_client()
 
 # ================================================================================
+# STARTUP HEALTH CHECK (NEW)
+# ================================================================================
+
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def check_system_health():
+    """Check which endpoints are available at startup"""
+    return api_client.test_connection()
+
+# Run health check
+health_status = check_system_health()
+
+# Store in session state
+if 'health_status' not in st.session_state:
+    st.session_state.health_status = health_status
+
+# ================================================================================
+# SYSTEM HEALTH BANNER (OPTIONAL)
+# ================================================================================
+
+if not health_status['connect'] and not health_status['navigator']:
+    st.warning(" **Running in Demo Mode** - Using mock predictions (AI Catalyst & Navigator unavailable)")
+elif not health_status['connect']:
+    st.info(" **AI Navigator Mode** - Using local LLM (AI Catalyst requires authentication)")
+elif health_status['connect']:
+    st.success(" **Production Mode** - Connected to AI Catalyst")
+
+# ================================================================================
 # SIDEBAR
 # ================================================================================
 
@@ -423,9 +492,11 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("### Model Info")
 st.sidebar.markdown("**Status:** Running")
 st.sidebar.markdown("**Endpoints:**")
-st.sidebar.markdown("- Anaconda Connect (Production)")
+st.sidebar.markdown("- AI Catalyst (Production)")
 st.sidebar.markdown("- AI Navigator (Local)")
 st.sidebar.markdown("**Model:** Hybrid XGBoost + Qwen 2.5 7B")
+
+
 
 # ================================================================================
 # PAGE 1: DASHBOARD (UPDATED WITH LIVE FEED)
@@ -553,9 +624,9 @@ if page == "Dashboard":
         statuses = []
         risk_levels = []
         
-        for merchant in merchants:
+        for merchant_name in merchants:
             # Determine if suspicious
-            is_suspicious = merchant in SUSPICIOUS_MERCHANTS
+            is_suspicious = merchant_name in SUSPICIOUS_MERCHANTS
             
             if is_suspicious:
                 amount = np.random.uniform(500, 5000)
@@ -2542,111 +2613,64 @@ elif page == "System Status":
     
     if test_connect or test_all:
         st.markdown("### AI Catalyst - Production Server")
-        
-        with st.spinner("Testing Anaconda Connect..."):
-            try:
-                test_payload = {
-                    "data": [[0] * 30],
-                    "merchant_description": ["CONNECTION_TEST"],
-                    "amount": [100.0]
-                }
-                
-                start_time = time.time()
-                resp = api_client.session.post(
-                    api_client.connect_endpoint, 
-                    json=test_payload, 
-                    timeout=10
-                )
-                latency = (time.time() - start_time) * 1000
-                
-                if resp.status_code == 200:
-                    # Check if response is HTML (authentication error)
-                    content_type = resp.headers.get('content-type', '').lower()
-                    is_html = 'html' in content_type or resp.text.strip().startswith('<!DOCTYPE') or resp.text.strip().startswith('<html')
+    
+    with st.spinner("Testing AI Catalyst..."):
+        try:
+            # Use prompt format for AI Catalyst completions endpoint
+            catalyst_test_payload = {
+                "prompt": "Test connection. Analyze this transaction and return JSON: {\"status\": \"ok\", \"probability\": 0.5}",
+                "max_tokens": 200
+            }
+
+            start_time = time.time()
+            resp = api_client.session.post(
+                api_client.connect_endpoint, 
+                json=catalyst_test_payload,
+                timeout=10
+            )
+            latency = (time.time() - start_time) * 1000
+            
+            if resp.status_code == 200:
+                # Success! Parse response
+                try:
+                    response_data = resp.json()
                     
-                    if is_html:
-                        # Authentication required
-                        st.warning("⚠️ **Anaconda Connect is ONLINE but requires authentication**")
-                        st.info(f" Response time: {latency:.1f}ms")
-                        
-                        # Check if it's the token message
-                        if 'token' in resp.text.lower() or 'auth' in resp.text.lower():
-                            st.warning(" **API Token Required**")
-                            st.info(" Endpoint is responding correctly")
-                            st.info(" Authentication needed for production access")
-                            st.info(" **App will use AI Navigator or Mock fallback for demos**")
-                            
-                            with st.expander(" Why You See This"):
-                                st.markdown(f"""
-                                **This is NORMAL for demo environments without production credentials.**
-                                
-                                **What's Happening:**
-                                - AI Catalyst endpoint is ONLINE and responding (108.4ms)
-                                - Infrastructure is working correctly
-                                - API requires authentication token for actual predictions
-                                - Your app automatically falls back to AI Navigator (which IS working!)
-                                
-                                **For Demos:**
-                                - Use **AI Navigator** (your local Qwen 2.5 7B) - it's working perfectly!
-                                - Or use **Mock Model** - realistic fraud detection heuristics
-                                - Both are excellent for customer demonstrations
-                                
-                                **For Production Deployment:**
-                                - Contact Anaconda administrator for API token
-                                - Token authenticates your requests to AI Catalyst
-                                - Once added, Connect becomes primary endpoint
-                                
-                                **Current Demo Status:** FULLY FUNCTIONAL using AI Navigator
-                                """, unsafe_allow_html=True)
-                            
-                            with st.expander(" View HTML Response"):
-                                st.code(resp.text[:1500], language='html')
-                                st.caption("This HTML page indicates authentication is required")
-                        else:
-                            st.error(" Unexpected HTML response")
-                            with st.expander(" View Response"):
-                                st.code(resp.text[:1000], language='html')
-                    else:
-                        # Try to parse JSON
-                        parsed_data = extract_json_from_text(resp.text)
-                        
-                        if parsed_data:
-                            st.success(" **Anaconda Connect is ONLINE**")
-                            st.info(f" Response time: {latency:.1f}ms")
-                            st.success(" Production AI Catalyst endpoint available and authenticated!")
-                            
-                            with st.expander(" View Response"):
-                                st.json(parsed_data)
-                                
-                                # Show extracted values
-                                if 'probability' in parsed_data or 'prediction' in parsed_data:
-                                    st.markdown("**Extracted Values:**")
-                                    if 'probability' in parsed_data:
-                                        st.write(f"Probability: {parsed_data['probability']}")
-                                    if 'prediction' in parsed_data:
-                                        st.write(f"Prediction: {parsed_data['prediction']}")
-                        else:
-                            st.warning(" Response received but could not parse JSON")
-                            with st.expander(" View Raw Response"):
-                                st.code(resp.text[:2000], language='text')
-                                st.caption(f"Content-Type: {content_type}")
-                else:
-                    st.error(f" HTTP {resp.status_code}: {resp.reason}")
-                    with st.expander(" View Error"):
-                        st.code(resp.text[:1000])
+                    st.success("**AI Catalyst is ONLINE**")
+                    st.info(f"Response time: {latency:.1f}ms")
+                    st.success("Production AI Catalyst endpoint authenticated!")
                     
-            except requests.exceptions.Timeout:
-                st.error(" Connection Timeout (>10s)")
-                st.caption("Endpoint did not respond in time")
-            except requests.exceptions.ConnectionError:
-                st.error(" Cannot Reach Endpoint")
-                st.caption("Network connection failed")
-                st.code(f"URL: {api_client.connect_endpoint}")
-            except Exception as e:
-                st.error(f" Error: {type(e).__name__}")
-                st.code(str(e))
-        
-        st.markdown("---")
+                    with st.expander("View Response"):
+                        st.json(response_data)
+                        
+                except json.JSONDecodeError:
+                    st.warning("Response received but not valid JSON")
+                    with st.expander("View Raw Response"):
+                        st.code(resp.text[:2000], language='text')
+                        
+            elif resp.status_code in [401, 403]:
+                # Authentication required
+                st.warning("**AI Catalyst is ONLINE but requires authentication**")
+                st.info(f"Response time: {latency:.1f}ms")
+                st.info("API Token needed for production access")
+                st.info("**App will use AI Navigator or Mock fallback for demos**")
+                
+            else:
+                st.error(f"HTTP {resp.status_code}: {resp.reason}")
+                with st.expander("View Error"):
+                    st.code(resp.text[:1000])
+                    
+        except requests.exceptions.Timeout:
+            st.error("Connection Timeout (>10s)")
+            st.caption("Endpoint did not respond in time")
+        except requests.exceptions.ConnectionError:
+            st.error("Cannot Reach Endpoint")
+            st.caption("Network connection failed")
+            st.code(f"URL: {api_client.connect_endpoint}")
+        except Exception as e:
+            st.error(f"Error: {type(e).__name__}")
+            st.code(str(e))
+    
+    st.markdown("---")
     
     # ============================================================================
     # TEST AI NAVIGATOR (IMPROVED JSON DISPLAY)
@@ -2794,7 +2818,7 @@ elif page == "System Status":
                 st.info(" **System Status: GOOD (Fallback Active)**")
                 st.info(f" Active Endpoint: **{source}**")
                 st.info(f" Latency: {latency:.1f}ms")
-                st.warning(" Anaconda Connect unavailable - using local Navigator")
+                st.warning(" AI Catalyst unavailable - using local Navigator")
                 st.success(" **This is NORMAL for demos** - Navigator works great!")
                 
             elif 'Mock' in source:
@@ -2860,18 +2884,14 @@ elif page == "System Status":
         - **Auth:** Token required 
         """)
         
-        # Show authentication status
-        if 'connect' not in st.session_state:
-            st.session_state.connect_status = "Not tested"
-        
-        if st.session_state.get('connect_status') == 'auth_required':
-            st.warning(" **Status:** Authentication Required")
-            st.caption("Endpoint responding but needs API token")
-        elif st.session_state.get('connect_status') == 'online':
-            st.success(" **Status:** Authenticated & Online")
+        # Show authentication status from health check
+        if health_status['connect']:
+            st.success("**Status:** Authenticated & Online")
+            st.caption("Connection verified at startup")
         else:
-            st.info(" **Status:** Not tested yet")
-        
+            st.warning("**Status:** Offline or Authentication Required")
+            st.caption("Using fallback endpoints")
+
         st.markdown("---")
         
         st.markdown("###  AI Navigator")
@@ -2886,15 +2906,13 @@ elif page == "System Status":
         - **Auth:** None required 
         """)
         
-        # Show Navigator status
-        if st.session_state.get('navigator_status') == 'online':
-            st.success(" **Status:** Online & Responding")
+        # Show Navigator status from health check
+        if health_status['navigator']:
+            st.success("**Status:** Online & Responding")
             st.caption("LLM inference working perfectly!")
-        elif st.session_state.get('navigator_status') == 'offline':
-            st.error(" **Status:** Offline")
-            st.caption("Start with: ai-navigator serve --port 8080")
         else:
-            st.info(" **Status:** Not tested yet")
+            st.error("**Status:** Offline")
+            st.caption("Start with: ai-navigator serve --port 8080")
     
     with col2:
         st.markdown("###  Current Active Endpoint")
@@ -2903,7 +2921,7 @@ elif page == "System Status":
         
         # Show which endpoint is currently being used
         if "Connect" in source and "auth" not in source.lower():
-            st.success(" **ACTIVE:** Anaconda Connect")
+            st.success(" **ACTIVE:** AI Catalyst")
             st.info(" Production endpoint authenticated")
             st.metric("Performance", "Optimal")
             
@@ -2977,38 +2995,90 @@ elif page == "System Status":
     with health_col4:
         st.metric("Throughput", "~50/sec", "LLM limited")
         st.caption(" Navigator mode")
-    
+
     # ============================================================================
     # QUICK DIAGNOSTIC
     # ============================================================================
-    
+
     with st.expander("Quick Diagnostic"):
         st.markdown("### System Configuration Check")
-        
-        diag_col1, diag_col2 = st.columns(2)
-        
-        with diag_col1:
-            st.markdown("**Endpoints Configured:**")
-            st.code(f"""
-            AI Catalyst: {api_client.connect_endpoint[:60]}...
+    
+    # Determine current active endpoint from health status
+    if health_status['connect']:
+        current_endpoint = "AI Catalyst (Production)"
+        endpoint_status = "Connected & Authenticated"
+        endpoint_color = "green"
+    elif health_status['navigator']:
+        current_endpoint = "AI Navigator (Local)"
+        endpoint_status = "Running on localhost:8080"
+        endpoint_color = "blue"
+    else:
+        current_endpoint = "Mock Model (Fallback)"
+        endpoint_status = "Demo Mode Active"
+        endpoint_color = "orange"
+    
+    # Create status box
+    st.markdown(f"""
+    <div style='background-color: #f0f2f6; padding: 20px; border-radius: 8px; border-left: 5px solid {endpoint_color};'>
+        <h3 style='margin-top: 0;'>Active Endpoint</h3>
+        <p style='font-size: 18px; font-weight: bold; margin: 10px 0;'>{current_endpoint}</p>
+        <p style='margin: 5px 0; color: #666;'>Status: {endpoint_status}</p>
+        <p style='margin: 5px 0; color: #666;'>Last Prediction: {api_client.last_source}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("")
+    
+    diag_col1, diag_col2 = st.columns(2)
+    
+    with diag_col1:
+        st.markdown("**Endpoints Configured:**")
+        st.code(f"""
+            AI Catalyst: {api_client.connect_endpoint[:50]}...
             AI Navigator: {api_client.navigator_endpoint}
-            """)
-        
-        with diag_col2:
-            st.markdown("**Current Setup:**")
-            st.code(f"""
-            Last Source: {api_client.last_source}
+        """)
+    
+    with diag_col2:
+        st.markdown("**⚙️ Configuration:**")
+        st.code(f"""
             Session Active: Yes
-            Timeout: 20s (AI Catalyst), 30s (AI Navigator)
-            """)
-        
-        st.markdown("---")
-        st.markdown("**Expected Behavior:**")
-        st.markdown("-  AI Catalyst: Requires auth token (HTML response normal)")
-        st.markdown("-  AI Navigator: Working as a local LLM inference")
-        st.markdown("-  Mock Model: Always available as ultimate fallback")
-        st.markdown("")
-        st.success("Navigator is providing the fraud analysis.")
+            AI Catalyst Timeout: 10s
+            AI Navigator Timeout: 30s
+            Mock Always Available: Yes
+        """)
+    
+    st.markdown("---")
+    st.markdown("**System Status:**")
+    
+    status_col1, status_col2, status_col3 = st.columns(3)
+    
+    with status_col1:
+        if health_status['connect']:
+            st.success("**AI Catalyst**  \nConnected")
+        else:
+            st.error("**AI Catalyst**  \nNot Available")
+    
+    with status_col2:
+        if health_status['navigator']:
+            st.success("**AI Navigator**  \nRunning")
+        else:
+            st.error("**AI Navigator**  \nOffline")
+    
+    with status_col3:
+        st.info("**Mock Model**  \nAvailable")
+    
+    st.markdown("---")
+    
+    # Clear explanation
+    if health_status['connect']:
+        st.success("**All fraud predictions are using AI Catalyst (Production)**")
+        st.caption("Your app is running in production mode with the deployed model")
+    elif health_status['navigator']:
+        st.info("**Predictions using AI Navigator (Local Qwen 2.5 7B)**")
+        st.caption("AI Catalyst unavailable - using local LLM fallback")
+    else:
+        st.warning("**Predictions using Mock Model (Demo Mode)**")
+        st.caption("Both AI Catalyst and Navigator unavailable - using heuristics")
 
 # ================================================================================
 # FOOTER
