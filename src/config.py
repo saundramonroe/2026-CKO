@@ -31,7 +31,7 @@ __all__ = [
 
 # Anaconda Connect - Production deployed model
 
-CONNECT_ENDPOINT = "https://demo.sb.anacondaconnect.com/api/ai/inference/serve/424c8a7d-5d52-4afb-bc60-81c23e837134/v1/completions"
+CONNECT_ENDPOINT = "https://demo.sb.anacondaconnect.com/api/ai/inference/serve/54f7ffc7-17fd-4a19-a65d-3610bef3de53/v1/completions"
 
 
 # AI Navigator - Local LLM server

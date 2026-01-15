@@ -53,7 +53,7 @@ def load_llm_model(verbose=True):
     
     if _tokenizer is not None and _model is not None:
         if verbose:
-            print("✓ Using cached LLM model")
+            print("Using cached LLM model")
         return _tokenizer, _model
     
     if verbose:
@@ -78,7 +78,7 @@ def load_llm_model(verbose=True):
     device = next(_model.parameters()).device
     
     if verbose:
-        print(f"✓ Qwen 2.5 7B loaded successfully")
+        print(f"Qwen 2.5 7B loaded successfully")
         print(f"  • Device: {device}")
         print(f"  • Memory: ~4.88GB")
     
@@ -155,7 +155,7 @@ Fraud risk score (0.0-1.0):"""
         return score
         
     except Exception as e:
-        print(f"⚠️  LLM analysis error: {e}")
+        print(f"LLM analysis error: {e}")
         return 0.5  # Neutral score on error
 
 
@@ -297,7 +297,7 @@ class OptimizedHybridDetector:
         
         if verbose and llm_analyzed > 0:
             elapsed = time.time() - start_time
-            print(f"  ✓ Stage 2: Analyzed {llm_analyzed} cases in {elapsed:.1f}s")
+            print(f"  Stage 2: Analyzed {llm_analyzed} cases in {elapsed:.1f}s")
             print(f"  • Average: {elapsed/llm_analyzed:.2f}s per LLM call")
         
         return final_probas
