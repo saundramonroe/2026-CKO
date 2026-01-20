@@ -548,9 +548,9 @@ if 'health_status' not in st.session_state:
 # ================================================================================
 
 if not health_status['connect'] and not health_status['navigator']:
-    st.warning(" **Running in Demo Mode** - Using mock predictions (AI Catalyst & Navigator unavailable)")
+    st.warning(" **Running in Demo Mode** - Using mock predictions (AI Catalyst & Anaconda Desktop unavailable)")
 elif not health_status['connect']:
-    st.info(" **AI Navigator Mode** - Using local LLM (AI Catalyst requires authentication)")
+    st.info(" **Anaconda Desktop Mode** - Using local LLM (AI Catalyst requires authentication)")
 elif health_status['connect']:
     st.success(" **Production Mode** - Connected to AI Catalyst")
 
@@ -912,7 +912,7 @@ elif page == "Test Transaction":
         - Common services (Netflix, Starbucks)
         - Typical amounts: $5 - $500
         
-        **Expected Result:** Low score (0.02-0.30) → ✅ APPROVED
+        **Expected Result:** Low score (0.02-0.30) →  APPROVED
         """)
     
     with info_col2:
@@ -925,7 +925,7 @@ elif page == "Test Transaction":
         - Unknown/unverified merchants
         - High amounts: $500 - $5,000+
         
-        **Expected Result:** High score (0.60-0.98) → 🚫 BLOCKED or ⚠️ REVIEW
+        **Expected Result:** High score (0.60-0.98) →  BLOCKED or  REVIEW
         """)
     
     st.markdown("---")
@@ -1155,10 +1155,10 @@ elif page == "Test Transaction":
         st.markdown("**Risk Score Guide**")
         
         # FIXED: Use Streamlit native components instead of HTML
-        st.success("**0.00 - 0.30** 🟢  \nLow Risk → APPROVE")
-        st.warning("**0.30 - 0.50** 🟡  \nMedium-Low → APPROVE")
-        st.warning("**0.50 - 0.80** 🟠  \nMedium-High → REVIEW")
-        st.error("**0.80 - 1.00** 🔴  \nHigh Risk → BLOCK")
+        st.success("**0.00 - 0.30**  \nLow Risk → APPROVE")
+        st.warning("**0.30 - 0.50**   \nMedium-Low → APPROVE")
+        st.warning("**0.50 - 0.80**   \nMedium-High → REVIEW")
+        st.error("**0.80 - 1.00**   \nHigh Risk → BLOCK")
     
     # ============================================================================
     # CURRENT TRANSACTION PREVIEW (BEFORE ANALYSIS)
@@ -1181,13 +1181,13 @@ elif page == "Test Transaction":
                                 ['BITCOIN', 'CRYPTO', 'CASINO', 'WIRE', 'UNKNOWN', 'FOREIGN', 'UNVERIFIED'])
         
         if is_suspicious_name and amount > 2000:
-            expected = "🔴 High Risk"
+            expected = " High Risk"
         elif is_suspicious_name and amount > 1000:
-            expected = "🟠 High Risk"
+            expected = " High Risk"
         elif is_suspicious_name or amount > 1000:
-            expected = "🟡 Medium Risk"
+            expected = " Medium Risk"
         else:
-            expected = "🟢 Low Risk"
+            expected = " Low Risk"
         
         st.metric("Expected Risk", expected)
     
@@ -2635,8 +2635,20 @@ elif page == "Analytics":
 
 elif page == "System Status":
     st.title("System Status & Monitoring")
+
+    col_title, col_refresh_top = st.columns([5, 1])
+    with col_refresh_top:
+        if st.button("🔄 Refresh All", key="refresh_health_top"):
+            # Clear the cache
+            check_system_health.clear()
+            # Re-run health check
+            health_status = check_system_health()
+            st.session_state.health_status = health_status
+            st.success("Health status refreshed!")
+            st.rerun()
+
     st.markdown("---")
-    
+
     # ========================================================================
     # HELPER FUNCTION FOR JSON EXTRACTION
     # ========================================================================
@@ -2680,7 +2692,7 @@ elif page == "System Status":
         test_connect = st.button("Test AI Catalyst", use_container_width=True)
     
     with test_col2:
-        test_navigator = st.button("Test AI Navigator", use_container_width=True)
+        test_navigator = st.button("Test Anaconda Desktop", use_container_width=True)
     
     with test_col3:
         test_all = st.button("Test All Endpoints", use_container_width=True, type="primary")
@@ -2725,11 +2737,17 @@ elif page == "System Status":
                             st.json(response_data)
                             
                     except json.JSONDecodeError:
+                        health_status['connect'] = True
+                        st.session_state.health_status = health_status
+
                         st.warning("Response received but not valid JSON")
                         with st.expander("View Raw Response"):
                             st.code(resp.text[:2000], language='text')
                             
                 elif resp.status_code in [401, 403]:
+                    health_status['connect'] = True
+                    st.session_state.health_status = health_status
+
                     st.warning("**AI Catalyst is ONLINE but requires authentication**")
                     st.info(f"Response time: {latency:.1f}ms")
                     st.info("API Token needed for production access")
@@ -2752,6 +2770,8 @@ elif page == "System Status":
                 st.error("Cannot Reach Endpoint")
                 st.code(f"URL: {api_client.connect_endpoint}")
             except Exception as e:
+                health_status['connect'] = False
+                st.session_state.health_status = health_status
                 st.error(f"Error: {type(e).__name__}")
                 st.code(str(e))
         
@@ -2762,9 +2782,9 @@ elif page == "System Status":
 # ============================================================================
 
     if test_navigator or test_all:
-        st.markdown("### AI Navigator (Local Server)")
+        st.markdown("### Anaconda Desktop (Local Server)")
         
-        with st.spinner("Testing AI Navigator..."):
+        with st.spinner("Testing Anaconda Desktop..."):
             try:
                 navigator_test_payload = {
                     "messages": [
@@ -2785,7 +2805,7 @@ elif page == "System Status":
                 if resp.status_code == 200:
                     health_status['navigator'] = True
                     st.session_state.health_status = health_status
-                    st.success("**AI Navigator is ONLINE**")
+                    st.success("**Anaconda Desktop is ONLINE**")
                     st.info(f"Response time: {latency:.1f}ms")
                     st.success("Local Qwen 2.5 7B responding")
                     
@@ -2844,8 +2864,10 @@ elif page == "System Status":
                 health_status['navigator'] = False
                 st.session_state.health_status = health_status
                 st.error("Cannot Reach Local Server")
-                st.caption("Start with: ai-navigator serve --port 8080")
-            except Exception as e:
+                st.caption("Start with: Anaconda Desktop serve --port 8080")
+            except Exception as e: 
+                health_status['navigator'] = False
+                st.session_state.health_status = health_status
                 st.error(f"Error: {type(e).__name__}")
                 st.code(str(e))
         
@@ -2856,8 +2878,8 @@ elif page == "System Status":
 # ============================================================================
 
     if test_all:
-        st.markdown("###Complete System Test")
-        st.caption("Testing full fallback chain: Connect → Navigator → Mock")
+        st.markdown("### Complete System Test")
+        st.caption("Testing full fallback chain: Connect → Desktop → Mock")
         
         with st.spinner("Testing fraud detection with real prediction..."):
             test_merchant = "TEST CONNECTION MERCHANT"
@@ -2865,7 +2887,7 @@ elif page == "System Status":
             result = api_client.predict(test_merchant, test_amount)
         
         st.markdown("---")
-        st.markdown("####Test Result:")
+        st.markdown("#### Test Result:")
         
         if result.get('success'):
             source = result.get('source', 'Unknown')
@@ -2880,17 +2902,17 @@ elif page == "System Status":
             elif 'Navigator' in source:
                 st.info("**System Status: GOOD (Fallback Active)**")
                 st.info(f"Active Endpoint: **{source}**")
-                st.warning("AI Catalyst unavailable - using local Navigator")
-                st.success("**This is for bandwidth constrained demos** - Navigator works great!")
+                st.warning("AI Catalyst unavailable - using local Desktop")
+                st.success("**This is for bandwidth constrained demos** - Desktop works great!")
             else:
                 st.warning("**System Status: DEMO MODE**")
                 st.warning(f"Active Endpoint: **{source}**")
-                st.caption("Both Connect and Navigator unavailable using mock data")
+                st.caption("Both AI Catalyst and Desktop unavailable using mock data")
             
             st.info(f" Latency: {latency:.1f}ms")
             
             st.markdown("---")
-            st.markdown("####Test Prediction:")
+            st.markdown("#### Test Prediction:")
             
             pred_col1, pred_col2, pred_col3 = st.columns(3)
             
@@ -2954,7 +2976,7 @@ elif page == "System Status":
 
         st.markdown("---")
         
-        st.markdown("###  AI Navigator")
+        st.markdown("###  Anaconda Desktop")
         st.code(api_client.navigator_endpoint, language='text')
         
         st.markdown("""
@@ -2972,22 +2994,24 @@ elif page == "System Status":
             st.caption("LLM inference working perfectly!")
         else:
             st.error("**Status:** Offline")
-            st.caption("Start with: ai-navigator serve --port 8080")
+            st.caption("Start with: Anaconda Desktop serve --port 8080")
     
     with col2:
-        st.markdown("###Current Active Endpoint")
+        st.markdown("### Current Active Endpoint")
         
         source = api_client.last_source
-        
+
+        current_health = st.session_state.health_status
+
         # Determine which endpoint will be used based on health status
-        if health_status['connect']:
+        if current_health['connect']:
             expected_endpoint = "AI Catalyst (Production)"
             expected_status = "Connected & Authenticated"
             expected_performance = "Optimal"
             box_color = "#d4edda"
             border_color = "#28a745"
-        elif health_status['navigator']:
-            expected_endpoint = "AI Navigator (Local)"
+        elif current_health['navigator']:
+            expected_endpoint = "Anaconda Desktop (Local)"
             expected_status = "Running on localhost:8080"
             expected_performance = "Good"
             box_color = "#d1ecf1"
@@ -3033,7 +3057,7 @@ elif page == "System Status":
         
         st.markdown("---")
         
-        st.markdown("###Fallback Priority")
+        st.markdown("### Fallback Priority")
         
         # Visual fallback chain with current status
         st.markdown(f"""
@@ -3051,7 +3075,7 @@ elif page == "System Status":
                 ↓ If unavailable or not authenticated
             </div>
             <div style='margin-bottom: 15px;'>
-                <strong style='font-size: 16px;'>2️⃣ AI Navigator</strong><br>
+                <strong style='font-size: 16px;'>2️⃣ Anaconda Desktop</strong><br>
                 <span style='color: #666; font-size: 14px;'>Local Qwen 2.5 7B inference</span><br>
                 <span style='color: {"#28a745" if health_status["navigator"] else "#dc3545"}; 
                             font-size: 12px; font-weight: bold;'>
@@ -3088,7 +3112,7 @@ elif page == "System Status":
         st.caption(" Excellent")
     
     with health_col2:
-        st.metric("Avg Latency", "620ms", "Navigator active")
+        st.metric("Avg Latency", "620ms", "Desktop active")
         st.caption(" LLM inference")
     
     with health_col3:
@@ -3106,13 +3130,16 @@ elif page == "System Status":
     with st.expander("Quick Diagnostic"):
         st.markdown("### System Configuration Check")
         
+        # Always use st.session_state.health_status instead of local health_status
+        current_health = st.session_state.health_status  # ← USE SESSION STATE
+        
         # Determine current active endpoint from health status
-        if health_status['connect']:
+        if current_health['connect']:  
             current_endpoint = "AI Catalyst (Production)"
             endpoint_status = "Connected & Authenticated"
             endpoint_color = "green"
-        elif health_status['navigator']:
-            current_endpoint = "AI Navigator (Local)"
+        elif current_health['navigator']:  
+            current_endpoint = "Anaconda Desktop (Local)"
             endpoint_status = "Running on localhost:8080"
             endpoint_color = "blue"
         else:
@@ -3135,60 +3162,60 @@ elif page == "System Status":
         diag_col1, diag_col2 = st.columns(2)
         
         with diag_col1:
-            st.markdown("**Endpoints Configured:**")
+            st.markdown("** Endpoints Configured:**")
             st.code(f"""
-    AI Catalyst: {api_client.connect_endpoint[:50]}...
-    AI Navigator: {api_client.navigator_endpoint}
+                AI Catalyst: {api_client.connect_endpoint[:50]}...
+                Anaconda Desktop: {api_client.navigator_endpoint}
             """)
         
         with diag_col2:
-            st.markdown("**⚙️ Configuration:**")
+            st.markdown("** Configuration:**")
             st.code(f"""
-    Session Active: Yes
-    AI Catalyst Timeout: 10s
-    AI Navigator Timeout: 30s
-    Mock Always Available: Yes
+                Session Active: Yes
+                AI Catalyst Timeout: 10s
+                Anaconda Desktop Timeout: 30s
+                Mock Always Available: Yes
             """)
         
         st.markdown("---")
-        st.markdown("**System Status:**")
+        st.markdown("** System Status:**")
         
         status_col1, status_col2, status_col3 = st.columns(3)
         
         with status_col1:
-            if health_status['connect']:
-                st.success("**AI Catalyst**  \n Connected")
+            if current_health['connect']:  
+                st.success("** AI Catalyst**  \n Connected")
             else:
-                st.error("**AI Catalyst**  \n Not Available")
+                st.error("** AI Catalyst**  \n Not Available")
         
         with status_col2:
-            if health_status['navigator']:
-                st.success("**AI Navigator**  \n Running")
+            if current_health['navigator']:  
+                st.success("** Anaconda Desktop**  \n Running")
             else:
-                st.error("**AI Navigator**  \n Offline")
+                st.error("** Anaconda Desktop**  \n Offline")
         
         with status_col3:
-            st.info("**Mock Model**  \n Available")
+            st.info("** Mock Model**  \n Available")
         
         st.markdown("---")
         
-        # Clear explanation
-        if health_status['connect']:
+        # Clear explanation based on actual current health status
+        if current_health['connect']:  
             st.success(" **All fraud predictions are using AI Catalyst (Production)**")
             st.caption("Your app is running in production mode with the deployed model")
-        elif health_status['navigator']:
-            st.info(" **Predictions using AI Navigator (Local Qwen 2.5 7B)**")
+        elif current_health['navigator']: 
+            st.info(" **Predictions using Anaconda Desktop (Local Qwen 2.5 7B)**")
             st.caption("AI Catalyst unavailable - using local LLM fallback")
         else:
             st.warning(" **Predictions using Mock Model (Demo Mode)**")
-            st.caption("Both AI Catalyst and Navigator unavailable - using heuristics")
+            st.caption("Both AI Catalyst and Desktop unavailable - using heuristics")
 
     # ============================================================================
     # DEBUG INFORMATION 
     # ============================================================================
 
     if st.checkbox("Show Debug Information"):
-        st.markdown("###Debug Info")
+        st.markdown("### Debug Info")
         
         debug_col1, debug_col2 = st.columns(2)
         
