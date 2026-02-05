@@ -598,7 +598,7 @@ def get_api_client():
 api_client = get_api_client()
 
 # ================================================================================
-# STARTUP HEALTH CHECK (NEW)
+# STARTUP HEALTH CHECK 
 # ================================================================================
 
 @st.cache_data(ttl=30)  # Cache for 5 minutes
@@ -614,15 +614,15 @@ if 'health_status' not in st.session_state:
     st.session_state.health_status = health_status
 
 # ================================================================================
-# SYSTEM HEALTH BANNER (OPTIONAL)
+# SYSTEM HEALTH BANNER 
 # ================================================================================
 
-if not health_status['connect'] and not health_status['navigator']:
-    st.warning(" **Running in Demo Mode** - Using mock predictions (AI Catalyst & Anaconda Desktop unavailable)")
-elif not health_status['connect']:
-    st.info(" **Anaconda Desktop Mode** - Using local LLM (AI Catalyst requires authentication)")
-elif health_status['connect']:
-    st.success(" **Production Mode** - Connected to AI Catalyst")
+#if not health_status['connect'] and not health_status['navigator']:
+#    st.warning(" **Running in Demo Mode** - Using mock predictions (AI Catalyst & Anaconda Desktop unavailable)")
+#elif not health_status['connect']:
+#   st.info(" **Anaconda Desktop Mode** - Using local LLM (AI Catalyst requires authentication)")
+#elif health_status['connect']:
+#    st.success(" **Production Mode** - Connected to AI Catalyst")
 
 # ================================================================================
 # SIDEBAR

@@ -16,8 +16,7 @@ Anaconda Value: Single source of truth for reproducible experiments
 # API ENDPOINTS
 # ================================================================================
 # API Authentication Token for Anaconda Connect
-API_TOKEN = "eyJhbGciOiJIUzI1NiIsImtpZCI6IjEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2RlbW8uc2IuYW5hY29uZGFjb25uZWN0LmNvbS9hcGkvYXV0aCIsImlhdCI6MTc2OTU0NzYzNiwiZXhwIjoxNzY5NjM0MDM2LCJ0eXAiOiJSZWZyZXNoIiwiYXVkIjoicmVwby1zZXJ2aWNlIiwianRpIjoiZFZyWWVVelREMmthSUZoZEVzeEdsY1Z3UExqS25sVG5sOTRsUFcwUG1IVmxoZkpnR0UxMUlLbk5EV3AzSEczblpGZWdmaUtJamFZSkIyRTVHVGtINFEiLCJzY29wZSI6Im9wZW5pZCJ9.Wj_BriGZA0Tb6zHoFcF75qw04Db2FwO1Mn6FXYKCVg0"
-# Export it
+API_TOKEN = "eyJhbGciOiJIUzI1NiIsImtpZCI6IjEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2RlbW8uc2IuYW5hY29uZGFjb25uZWN0LmNvbS9hcGkvYXV0aCIsImlhdCI6MTc3MDIyMjg1NywiZXhwIjoxNzcwMzA5MjU3LCJ0eXAiOiJSZWZyZXNoIiwiYXVkIjoicmVwby1zZXJ2aWNlIiwianRpIjoiSkd2VGlpZEN1eWplT2VpeGh1SWRTWWF1Y1JHMzlNUGc2eWlBaXhIYmg1OVBCa1pVTXppMzVEanNxYkRVRzloMURFTEhPbG10c19tV1I1RlVoQl85bVEiLCJzY29wZSI6Im9wZW5pZCJ9.zKAdPKGp2kgmMXPsfyn5VKcP5bjmyrq2VZlKCfC29zQ"
 
 __all__ = [
     'CONNECT_ENDPOINT', 
@@ -31,7 +30,7 @@ __all__ = [
 
 # Anaconda Connect - Production deployed model
 
-CONNECT_ENDPOINT = "https://demo.sb.anacondaconnect.com/api/ai/inference/serve/a801c7e2-cbdf-46d2-906f-4216b523ceb5/v1/completions"
+CONNECT_ENDPOINT = "https://demo.sb.anacondaconnect.com/api/ai/inference/serve/ca3e753c-e23b-40b1-a61d-d654859b5d35/v1/completions"
 
 
 # AI Navigator - Local LLM server
