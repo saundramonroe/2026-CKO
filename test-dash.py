@@ -142,10 +142,21 @@ class FraudDetectionAPI:
             features = self._generate_features(merchant, amount)
 
         start_time = time.time()
+        merchant_upper = merchant.upper()
+        
+        def _cap_for_legitimate(result):
+            if result and merchant in LEGITIMATE_MERCHANTS:
+                prob = result.get('probability', 0)
+                if prob > 0.40:
+                    print(f"⚠️ Capping suspicious score {prob:.3f} for known merchant {merchant}")
+                    result['probability'] = 0.40
+                    result['prediction'] = 0
+            return result
 
         # 1) Try AI Catalyst
         r = self._try_connect_inference(merchant, amount, features)
-        if r is not None and r.get('probability', 0) > 0:  # Added validation
+        if r is not None and 0.01 <= r.get('probability', 0) <=0.99:  # Added validation
+            r = _cap_for_legitimate(r)
             r["latency_ms"] = (time.time() - start_time) * 1000
             r["timestamp"] = datetime.now()
             r["source"] = "AI Catalyst (Deployed Model)"
@@ -154,7 +165,7 @@ class FraudDetectionAPI:
 
         # 2) Fallback to Anaconda Desktop
         r = self._try_navigator_llm(merchant, amount)
-        if r is not None and r.get('probability', 0) > 0:  # Added validation
+        if r is not None and 0.01 <= r.get('probability', 0) <=0.99:  # Added validation
             r["latency_ms"] = (time.time() - start_time) * 1000
             r["timestamp"] = datetime.now()
             r["source"] = "Anaconda Desktop (Local)"
@@ -171,38 +182,31 @@ class FraudDetectionAPI:
     def _try_connect_inference(self, merchant, amount, features):
         """Call AI Catalyst with multiple parsing strategies"""
 
-        
-        # Construct a clear prompt for fraud scoring
-        prompt = f"""Fraud risk analysis:
+        prompt = f"""You are a fraud detector. Score this transaction.
+
     Merchant: {merchant}
     Amount: ${float(amount):.2f}
 
-    Return a fraud probability score between 0.0 (safe) and 1.0 (fraud).
-
-    Examples:
-    - BITCOIN ATM $3000 → 0.89
-    - AMAZON.COM $50 → 0.12
-    - UNKNOWN MERCHANT $2000 → 0.75
-
-    Score for the transaction above:"""
+    Reply with ONLY a single decimal number between 0.0 and 1.0.
+    High-risk keywords (crypto, bitcoin, casino, wire, unknown) = high score.
+    Known retailers (amazon, walmart, starbucks, netflix) = low score.
+    Score:"""
         
         payload = {
             "prompt": prompt,
-            "max_tokens": 50,
-            "temperature": 0.2,
-            "stop": ["\n\n", "Explanation", "Note:"]
+            "max_tokens": 10,        # ← Reduced: only need a number
+            "temperature": 0.1,
+            "stop": ["\n", " ", "Explanation", "Note:"]
         }
 
         try:
             resp = self.session.post(self.connect_endpoint, json=payload, timeout=10)
             if resp.status_code != 200:
-                print(f"Catalyst: HTTP {resp.status_code}")
                 return None
                 
             result = resp.json()
             
             if 'choices' not in result or len(result['choices']) == 0:
-                print(f"Catalyst: No choices in response")
                 return None
             
             text = result['choices'][0].get('text', '').strip()
@@ -210,41 +214,27 @@ class FraudDetectionAPI:
             
             import re
             
-            # Try multiple parsing strategies
-            
-            # Strategy 1: Just a decimal number (e.g., "0.85")
-            decimal_only = re.search(r'^\s*(0?\.\d{1,4})\s*$', text)
-            if decimal_only:
-                prob = float(decimal_only.group(1))
-                if 0.0 <= prob <= 1.0:
-                    pred = 1 if prob >= 0.5 else 0
-                    print(f"Catalyst (decimal): prob={prob}")
-                    return {"success": True, "prediction": pred, "probability": prob}
-            
-            # Strategy 2: Find any decimal in the text
-            any_decimal = re.search(r'(0?\.\d{1,4})', text)
-            if any_decimal:
-                prob = float(any_decimal.group(1))
-                if 0.0 <= prob <= 1.0:
-                    pred = 1 if prob >= 0.5 else 0
-                    print(f"Catalyst (found decimal): prob={prob}")
-                    return {"success": True, "prediction": pred, "probability": prob}
-            
-            # Strategy 3: Look for JSON
-            json_match = re.search(r'\{[^}]*"probability"[^}]*:\s*(0?\.\d+)[^}]*\}', text)
-            if json_match:
-                prob = float(json_match.group(1))
+            # Strategy 1: Clean decimal at START of response (most reliable)
+            clean_match = re.match(r'^(0?\.\d{1,4}|1\.0)$', text)
+            if clean_match:
+                prob = float(clean_match.group(1))
                 pred = 1 if prob >= 0.5 else 0
-                print(f"Catalyst (JSON): prob={prob}")
                 return {"success": True, "prediction": pred, "probability": prob}
             
-            # Strategy 4: Look for percentage
-            pct_match = re.search(r'(\d{1,3})%', text)
+            # Strategy 2: Look for decimal at end of text (after "Score:" etc)
+            end_match = re.search(r'[\s:=](0?\.\d{1,4}|1\.0)\s*$', text)
+            if end_match:
+                prob = float(end_match.group(1))
+                if 0.0 <= prob <= 1.0:
+                    pred = 1 if prob >= 0.5 else 0
+                    return {"success": True, "prediction": pred, "probability": prob}
+            
+            # Strategy 3: Percentage at end
+            pct_match = re.search(r'(\d{1,3})%\s*$', text)
             if pct_match:
                 prob = float(pct_match.group(1)) / 100.0
                 if prob <= 1.0:
                     pred = 1 if prob >= 0.5 else 0
-                    print(f"Catalyst (percent): prob={prob}")
                     return {"success": True, "prediction": pred, "probability": prob}
             
             print(f"Catalyst: Could not parse '{text}'")
@@ -294,7 +284,7 @@ class FraudDetectionAPI:
             try:
                 content = content.replace('```json', '').replace('```', '').strip()
                 if content.lower().startswith("return"):
-                    content = content_text.split(":", 1)[1].strip()
+                    content = content.split(":", 1)[1].strip()
                 # Try direct parse
                 if '{' in content and '}' in content:
                     json_start = content.index('{')
