@@ -16,8 +16,9 @@ Anaconda Value: Single source of truth for reproducible experiments
 # API ENDPOINTS
 # ================================================================================
 # API Authentication Token for Anaconda Connect
-API_TOKEN = "eyJhbGciOiJIUzI1NiIsImtpZCI6IjEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FoYWRqaTEuc2IuYW5hY29uZGFjb25uZWN0LmNvbS9hcGkvYXV0aCIsImlhdCI6MTc3MjgxMjAyNCwiZXhwIjoxNzcyODk4NDI0LCJ0eXAiOiJSZWZyZXNoIiwiYXVkIjoicmVwby1zZXJ2aWNlIiwianRpIjoicjBXT0Y2SlhfNFJpQ19yNHBqTnM2RzJXT1k2amdIdHBiVVkwX0s0d1pVd2JxbkFWcXN0QkxzZHMzbjJYNUFfdnhwc18yb3gtZVJ0MjdWVE9DODBfYUEiLCJzY29wZSI6Im9wZW5pZCJ9.DLvFIJ0qo0V7kbgmqYLSO6o4AD8zp-fBhXAYy2kM1Y8"
 
+
+API_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE4MDQzNTMzMDgsImtpZCI6IjciLCJzY29wZXMiOlsiY2xvdWQ6cmVhZCIsImNsb3VkOndyaXRlIiwicmVwbzpyZWFkIiwicmVwbzp3cml0ZSJdLCJ2ZXIiOiJhcGk6MSIsInN1YiI6IjVjZjQwNDJhLTE3NDUtNDE0MC1iODE5LTA4NmRjZGE1Njc2NiJ9.V_ezDWeZGyZgZYxIQ5BxVPw5G7bB9BQgSGJXx4H_f0sYaDjjRVVy2bU9viuZcXh801COXkNMGtC33UW_ysDaIEmeBFx7GxXQ9UUv1u74qBae4d7u1zohzsael9vDl3pgvWrxg7vzRWLQPW83PmXeX93bkpz4yBesrpldRy3XbEYAJI_eBz31VVk97WKqHP39G3Pm57hSLsORNmYlAuzKBbvqfEjTkEy5CFFwamkGPftuyNNEJoe5qVAPrdPSCmGqxhB6UzyW9T0Mjd_S-s7muZ-BcHTbFOTpz3o3Lha7-h_kS2UkdLc8iaBMsg534E7IkxuwH3TvH5HhYWn-09pa_Q"
 __all__ = [
     'CONNECT_ENDPOINT', 
     'NAVIGATOR_ENDPOINT', 
@@ -30,7 +31,7 @@ __all__ = [
 
 # Anaconda Connect - Production deployed model
 
-CONNECT_ENDPOINT = "https://ahadji1.sb.anacondaconnect.com/api/ai/inference/serve/72b797bd-964e-4c90-9081-c64028ba383a/v1/completions"
+CONNECT_ENDPOINT = "https://ahadji1.sb.anacondaconnect.com/api/ai/inference/serve/72b797bd-964e-4c90-9081-c64028ba383a/v1/chat/completions"
 
 # AI Navigator - Local LLM server
 NAVIGATOR_ENDPOINT = "http://127.0.0.1:8080/v1/chat/completions"

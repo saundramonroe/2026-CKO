@@ -182,21 +182,24 @@ class FraudDetectionAPI:
     def _try_connect_inference(self, merchant, amount, features):
         """Call AI Catalyst with multiple parsing strategies"""
 
-        prompt = f"""You are a fraud detector. Score this transaction.
-
-    Merchant: {merchant}
-    Amount: ${float(amount):.2f}
-
-    Reply with ONLY a single decimal number between 0.0 and 1.0.
-    High-risk keywords (crypto, bitcoin, casino, wire, unknown) = high score.
-    Known retailers (amazon, walmart, starbucks, netflix) = low score.
-    Score:"""
-        
         payload = {
-            "prompt": prompt,
-            "max_tokens": 10,        # ← Reduced: only need a number
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You are a fraud detection model. Reply with ONLY a single decimal number between 0.0 and 1.0. No words, no explanation."
+                },
+                {
+                    "role": "user",
+                    "content": f"Merchant: {merchant}, Amount: ${float(amount):.2f}"
+                },
+                {
+                    "role": "assistant",
+                    "content": "0."
+                }
+            ],
+            "max_tokens": 4,
             "temperature": 0.1,
-            "stop": ["\n", " ", "Explanation", "Note:"]
+            "stop": ["\n"]
         }
 
         try:
@@ -209,19 +212,27 @@ class FraudDetectionAPI:
             if 'choices' not in result or len(result['choices']) == 0:
                 return None
             
-            text = result['choices'][0].get('text', '').strip()
+            text = result['choices'][0].get('message', {}).get('content', '').strip()
             print(f"Catalyst raw text: '{text}'")
             
             import re
-            
-            # Strategy 1: Clean decimal at START of response (most reliable)
+
+            # Strategy 1: Single digit from "0." primer (e.g. "5" → 0.5)
+            if re.match(r'^\d{1,2}$', text):
+                prob = float(f"0.{text}")
+                if 0.0 <= prob <= 1.0:
+                    pred = 1 if prob >= 0.5 else 0
+                    print(f"Catalyst parsed single digit: 0.{text} → {prob}")
+                    return {"success": True, "prediction": pred, "probability": prob}
+
+            # Strategy 2: Clean decimal at START of response (e.g. "0.85")
             clean_match = re.match(r'^(0?\.\d{1,4}|1\.0)$', text)
             if clean_match:
                 prob = float(clean_match.group(1))
                 pred = 1 if prob >= 0.5 else 0
                 return {"success": True, "prediction": pred, "probability": prob}
             
-            # Strategy 2: Look for decimal at end of text (after "Score:" etc)
+            # Strategy 3: Decimal at end of text (after "Score:" etc)
             end_match = re.search(r'[\s:=](0?\.\d{1,4}|1\.0)\s*$', text)
             if end_match:
                 prob = float(end_match.group(1))
@@ -229,7 +240,7 @@ class FraudDetectionAPI:
                     pred = 1 if prob >= 0.5 else 0
                     return {"success": True, "prediction": pred, "probability": prob}
             
-            # Strategy 3: Percentage at end
+            # Strategy 4: Percentage at end
             pct_match = re.search(r'(\d{1,3})%\s*$', text)
             if pct_match:
                 prob = float(pct_match.group(1)) / 100.0
@@ -278,8 +289,12 @@ class FraudDetectionAPI:
                 return None
                 
             content = out["choices"][0]["message"]["content"]
-            print(f"Desktop raw content: {content}")
-            
+
+            # Reject if model echoed the prompt back
+            if content.strip().startswith("You are"):
+                print("Desktop Error: Model echoed prompt, skipping")
+                return None
+                        
             # Parse JSON with better error handling
             try:
                 content = content.replace('```json', '').replace('```', '').strip()
@@ -399,26 +414,18 @@ class FraudDetectionAPI:
     def test_connection(self):
         """Test connectivity to all endpoints WITH actual parsing validation"""
         results = {'connect': False, 'navigator': True, 'mock': True}
-    
-        # Test AI Catalyst - REALISTIC fraud prompt!
+
+        # Test AI Catalyst
         try:
-            # Use actual fraud detection format (like my working predictions)
             catalyst_test_payload = {
-                "prompt": """Fraud risk analysis:
-                Merchant: TEST STORE
-                Amount: $100.00
-
-                Return a fraud probability score between 0.0 (safe) and 1.0 (fraud).
-
-                Examples:
-                - BITCOIN ATM $3000 → 0.89
-                - AMAZON.COM $50 → 0.12
-                - UNKNOWN MERCHANT $2000 → 0.75
-
-                Score for the transaction above:""",
-                "max_tokens": 50,
-                "temperature": 0.2,
-                "stop": ["\n\n", "Explanation", "Note:"]
+                "messages": [
+                    {"role": "system", "content": "Reply with only a decimal number between 0.0 and 1.0."},
+                    {"role": "user", "content": "Merchant: TEST STORE, Amount: $100"},
+                    {"role": "assistant", "content": "0."}
+                ],
+                "max_tokens": 4,
+                "temperature": 0.1,
+                "stop": ["\n"]
             }
             
             resp = self.session.post(
@@ -434,33 +441,43 @@ class FraudDetectionAPI:
                     result = resp.json()
                     
                     if 'choices' in result and len(result['choices']) > 0:
-                        text = result['choices'][0].get('text', '').strip()
+                        text = result['choices'][0].get('message', {}).get('content', '').strip()
                         print(f"AI Catalyst response text: '{text}'")
                         
                         import re
-                        # Try to find a decimal number (same logic as predictions)
-                        match = re.search(r'(0?\.\d{1,4})', text)
-                        if match:
-                            prob = float(match.group(1))
+
+                        # Handle single digit from "0." primer (e.g. "5" → 0.5)
+                        if re.match(r'^\d{1,2}$', text):
+                            prob = float(f"0.{text}")
                             if 0.0 <= prob <= 1.0:
                                 results['connect'] = True
-                                print(f" AI Catalyst: Successfully parsed {prob}")
+                                print(f"AI Catalyst: Successfully parsed 0.{text} → {prob}")
                             else:
-                                print(f" AI Catalyst: Invalid probability {prob}")
+                                print(f"AI Catalyst: Invalid probability 0.{text}")
                         else:
-                            print(f" AI Catalyst: Could not extract number from '{text}'")
+                            # Fall back to decimal search
+                            match = re.search(r'(0?\.\d{1,4})', text)
+                            if match:
+                                prob = float(match.group(1))
+                                if 0.0 <= prob <= 1.0:
+                                    results['connect'] = True
+                                    print(f"AI Catalyst: Successfully parsed {prob}")
+                                else:
+                                    print(f"AI Catalyst: Invalid probability {prob}")
+                            else:
+                                print(f"AI Catalyst: Could not extract number from '{text}'")
                     else:
-                        print(" AI Catalyst: No choices in response")
+                        print("AI Catalyst: No choices in response")
                         
                 except Exception as parse_error:
-                    print(f" AI Catalyst: Parse error - {parse_error}")
+                    print(f"AI Catalyst: Parse error - {parse_error}")
             
         except requests.exceptions.ConnectionError:
-            print(" AI Catalyst: Connection refused")
+            print("AI Catalyst: Connection refused")
         except requests.exceptions.Timeout:
-            print(" AI Catalyst: Timeout")
+            print("AI Catalyst: Timeout")
         except Exception as e:
-            print(f" AI Catalyst: {type(e).__name__}: {e}")
+            print(f"AI Catalyst: {type(e).__name__}: {e}")
         
         # Test Desktop 
         try:
@@ -492,9 +509,9 @@ class FraudDetectionAPI:
                         print(f"Desktop: Successfully parsed {data['probability']}")
                         
         except Exception as e:
-            print(f" Desktop: {type(e).__name__}")
+            print(f"Desktop: {type(e).__name__}")
         
-        print(f"\n Final health check results: {results}")
+        print(f"\nFinal health check results: {results}")
         return results
 
 
@@ -591,17 +608,10 @@ api_client = get_api_client()
 # STARTUP HEALTH CHECK 
 # ================================================================================
 
-@st.cache_data(ttl=30)  # Cache for 5 minutes
-def check_system_health():
-    """Check which endpoints are available at startup"""
-    return api_client.test_connection()
-
-# Run health check
-health_status = check_system_health()
-
-# Store in session state
 if 'health_status' not in st.session_state:
-    st.session_state.health_status = health_status
+    st.session_state.health_status = api_client.test_connection()
+
+health_status = st.session_state.health_status
 
 # ================================================================================
 # SYSTEM HEALTH BANNER 
@@ -2775,8 +2785,14 @@ elif page == "System Status":
         with st.spinner("Testing Anaconda Connect..."):
             try:
                 catalyst_test_payload = {
-                    "prompt": "Test connection. Return: 0.5",
-                    "max_tokens": 20
+                    "messages": [
+                        {"role": "system", "content": "Reply with only a decimal number between 0.0 and 1.0."},
+                        {"role": "user", "content": "Merchant: TEST STORE, Amount: $100"},
+                        {"role": "assistant", "content": "0."}
+                    ],
+                    "max_tokens": 4,
+                    "temperature": 0.1,
+                    "stop": ["\n"]
                 }
 
                 start_time = time.time()
