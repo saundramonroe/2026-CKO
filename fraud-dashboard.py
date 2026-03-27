@@ -2,7 +2,7 @@
 """
 Fraud Detection Dashboard - Streamlit Application
 
-Launch with: streamlit run app.py
+Launch with: streamlit run fraud-dashboard.py
 
 Features:
 - Real-time fraud detection testing
@@ -2710,7 +2710,7 @@ elif page == "System Status":
     with col_refresh_top:
         if st.button("🔄 Refresh All", key="refresh_health_top"):
             # Clear the cache
-            check_system_health.clear()
+            # check_system_health.clear() 
             # Re-run health check
             health_status = api_client.test_connection()
             st.session_state.health_status = health_status
