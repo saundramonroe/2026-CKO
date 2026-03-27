@@ -16,7 +16,7 @@ Download `creditcard.csv` from [Kaggle](https://www.kaggle.com/datasets/mlg-ulb/
 
 ### 3. Run Interactive Dashboard
 ```bash
-streamlit run fraud-detection-dash.py
+streamlit run fraud-dashboard.py
 ```
 
 Or explore the notebooks:
@@ -31,11 +31,11 @@ jupyter notebook
 ## Project Structure
 - `src/` - Core Python modules (importable, reusable)
 - `notebooks/` - Jupyter notebooks for exploration and training
-- `fraud-detection-dash.py` - Streamlit dashboard for interactive demos
-- `data/` - Dataset location (not included in repo)
+- `fraud-dashboard.py` - Streamlit dashboard for interactive demos
+- `data/` - Dataset location (not included in repo but can be pulled down from Kaggle as noted above)
 
 ## Anaconda Value Demonstrated
-- **Core**: Package management, SBOM generation, dependency tracking
+- **Core**: Governed package management, SBOM generation, dependency tracking
 - **Desktop**: Integrated Jupyter + ML environment
 - **AI Catalyst**: Model governance, deployment, monitoring
 
