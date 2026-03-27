@@ -16,7 +16,7 @@ class FraudDetectionAPI:
     
     Fallback Order:
     1. Anaconda Connect (Production AI Catalyst)
-    2. AI Navigator (Local Qwen 2.5 7B server)
+    2. AI Navigator (Local Meta-Llama-3.1-8B-Instruct server)
     3. Mock Model (Always available for demos)
     """
     
@@ -498,7 +498,7 @@ Return ONLY a JSON object with:
         
         Tries endpoints in order:
         1. Anaconda Connect (Production)
-        2. AI Navigator (Local LLM)
+        2. Anaconda Desktop (Local LLM)
         3. Mock Model (Always works)
         
         Args:
@@ -561,7 +561,7 @@ Return ONLY a JSON object with:
             'model_type': 'Hybrid ML+LLM System',
             'architecture': {
                 'stage_1': 'XGBoost (Rapid Screening)',
-                'stage_2': 'Qwen 2.5 7B (Deep Analysis)',
+                'stage_2': 'Meta-Llama-3.1-8B-Instruct (Deep Analysis)',
                 'weights': {'xgb': 0.6, 'llm': 0.4}
             },
             'performance': {

@@ -3,7 +3,7 @@ Fraud Detection Models
 
 This module contains:
 - Hybrid ML+LLM fraud detector
-- LLM text analysis functions
+- LLM text analysis functions (via Anaconda Connect API)
 - Model evaluation utilities
 
 Persona: Sarah Chen (Data Scientist), Marcus (ML Engineer)
@@ -12,86 +12,113 @@ Anaconda Value: Seamless integration of traditional ML + LLM
 
 import time
 import re
+import json
 import numpy as np
-import torch
+import requests
 from sklearn.ensemble import RandomForestClassifier
-from transformers import AutoTokenizer, AutoModelForCausalLM
 from .config import (
     LLM_MODEL_NAME, LLM_MAX_NEW_TOKENS, LLM_TEMPERATURE,
     MODEL_WEIGHTS, XGB_N_ESTIMATORS, XGB_MAX_DEPTH, XGB_RANDOM_STATE,
-    LOW_RISK_THRESHOLD
+    LOW_RISK_THRESHOLD, CONNECT_ENDPOINT, API_TOKEN
 )
 
 
 # ================================================================================
-# LLM INITIALIZATION
+# LLM INITIALIZATION (API-based — no local model download required)
 # ================================================================================
 
-# Global variables for lazy loading
-_tokenizer = None
-_model = None
+# Global variables
+_session = None
 _llm_cache = {}
+
+
+def _get_session():
+    """
+    Get or create a reusable requests session for the Connect API.
+    
+    Returns:
+        requests.Session configured with auth headers
+    """
+    global _session
+    if _session is None:
+        _session = requests.Session()
+        _session.headers.update({
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': f'Bearer {API_TOKEN}',
+            'User-Agent': 'Anaconda-Fraud-Detection/1.0'
+        })
+    return _session
 
 
 def load_llm_model(verbose=True):
     """
-    Load Qwen 2.5 7B model for text analysis
+    Initialize connection to Meta-Llama-3.1-8B-Instruct via Anaconda Connect API.
+    
+    Unlike local model loading, this validates the API endpoint is reachable
+    without downloading the ~4.68GB model weights.
     
     Returns:
-        Tuple of (tokenizer, model)
+        Tuple of (session, endpoint_url) — drop-in replacement for (tokenizer, model)
         
     Anaconda Value:
-        - Desktop handles large model dependencies automatically
-        - torch + transformers tracked in environment
-        - Model weights cached after first load (~4.68GB)
+        - Model served via Anaconda Connect (AI Catalyst)
+        - No local GPU or model download required
+        - Same model, production-grade infrastructure
         
     Performance:
-        - First load: 2-3 minutes
-        - Subsequent loads: <30 seconds (cached)
+        - Initialization: <1 second (just an HTTP check)
+        - Per-call latency: ~100-500ms (network round-trip)
     """
-    global _tokenizer, _model
-    
-    if _tokenizer is not None and _model is not None:
-        if verbose:
-            print("Using cached LLM model")
-        return _tokenizer, _model
+    session = _get_session()
     
     if verbose:
         print(f"\n Loading {LLM_MODEL_NAME}...")
-        print(f"  • Model size: ~4.68GB")
-        print(f"  • First load: 2-3 minutes")
-        print(f"  • Subsequent loads: <30 seconds (cached)")
+        print(f"  • Endpoint: {CONNECT_ENDPOINT[:60]}...")
+        print(f"  • Mode: API inference (no local model download)")
     
-    _tokenizer = AutoTokenizer.from_pretrained(
-        LLM_MODEL_NAME,
-        trust_remote_code=True
-    )
+    # Validate endpoint is reachable
+    try:
+        test_payload = {
+            "messages": [
+                {"role": "user", "content": "test"}
+            ],
+            "max_tokens": 1,
+            "temperature": 0.0
+        }
+        resp = session.post(CONNECT_ENDPOINT, json=test_payload, timeout=10)
+        
+        if resp.status_code == 200:
+            if verbose:
+                print(f" {LLM_MODEL_NAME} connected successfully")
+                print(f"  • Status: API reachable")
+                print(f"  • Auth: Valid")
+        elif resp.status_code == 401:
+            print(f"  WARNING: Authentication failed (401). Check API_TOKEN in config.py")
+        elif resp.status_code == 403:
+            print(f"  WARNING: Access forbidden (403). Check API permissions.")
+        else:
+            if verbose:
+                print(f"  WARNING: Endpoint returned HTTP {resp.status_code}")
+                print(f"  The model may still work — some endpoints reject minimal test payloads.")
+                
+    except requests.exceptions.ConnectionError:
+        print(f"  WARNING: Cannot reach Anaconda Connect endpoint.")
+        print(f"  LLM analysis will fall back to neutral scores (0.5).")
+    except requests.exceptions.Timeout:
+        print(f"  WARNING: Connection timed out.")
+        print(f"  LLM analysis will fall back to neutral scores (0.5).")
     
-    _model = AutoModelForCausalLM.from_pretrained(
-        LLM_MODEL_NAME,
-        torch_dtype=torch.float16,
-        device_map="auto",
-        trust_remote_code=True
-    )
-    _model.eval()
-    
-    device = next(_model.parameters()).device
-    
-    if verbose:
-        print(f"Qwen 2.5 7B loaded successfully")
-        print(f"  • Device: {device}")
-        print(f"  • Memory: ~4.88GB")
-    
-    return _tokenizer, _model
+    return session, CONNECT_ENDPOINT
 
 
 # ================================================================================
-# LLM TEXT ANALYSIS
+# LLM TEXT ANALYSIS (via Anaconda Connect API)
 # ================================================================================
 
 def analyze_merchant_llm(description, amount, use_cache=True):
     """
-    Analyze merchant description for fraud indicators using LLM
+    Analyze merchant description for fraud indicators using LLM via API.
     
     Args:
         description: Merchant name/description
@@ -102,9 +129,9 @@ def analyze_merchant_llm(description, amount, use_cache=True):
         float: Fraud probability (0.0 to 1.0)
         
     Optimization:
-        - Result caching (avoid duplicate LLM calls)
-        - Reduced token generation (5 vs 10)
-        - Simplified prompt (~3x faster)
+        - Result caching (avoid duplicate API calls)
+        - Concise prompt for fast inference
+        - Reusable HTTP session
         
     Business Logic:
         LLM analyzes text patterns that traditional ML might miss:
@@ -120,33 +147,56 @@ def analyze_merchant_llm(description, amount, use_cache=True):
         if cache_key in _llm_cache:
             return _llm_cache[cache_key]
     
-    # Load model if not already loaded
-    tokenizer, model = load_llm_model(verbose=False)
+    # Ensure session is ready
+    session = _get_session()
     
     # Build concise prompt
-    prompt = f"""Analyze: {description}, ${amount:.2f}
-Fraud risk score (0.0-1.0):"""
+    prompt = f"""Analyze this transaction for fraud risk and respond with ONLY a number between 0.0 and 1.0:
+Merchant: {description}
+Amount: ${amount:.2f}
+Fraud risk score (0.0=safe, 1.0=fraud):"""
     
     try:
-        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+        payload = {
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You are a fraud detection expert. Respond with ONLY a single decimal number between 0.0 and 1.0 representing the fraud risk score. No explanation."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "max_tokens": LLM_MAX_NEW_TOKENS,
+            "temperature": LLM_TEMPERATURE
+        }
         
-        with torch.no_grad():
-            outputs = model.generate(
-                **inputs,
-                max_new_tokens=LLM_MAX_NEW_TOKENS,
-                temperature=LLM_TEMPERATURE,
-                do_sample=False,
-                pad_token_id=tokenizer.eos_token_id
-            )
+        resp = session.post(CONNECT_ENDPOINT, json=payload, timeout=15)
         
-        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        
-        # Extract numeric score
-        numbers = re.findall(r'\d+\.?\d*', response.split(":")[-1])
-        score = float(numbers[0]) if numbers else 0.5
-        
-        # Clamp to valid range
-        score = min(max(score, 0.0), 1.0)
+        if resp.status_code == 200:
+            data = resp.json()
+            
+            # Extract response text from OpenAI-compatible format
+            response_text = ""
+            if 'choices' in data and len(data['choices']) > 0:
+                choice = data['choices'][0]
+                if 'message' in choice:
+                    response_text = choice['message'].get('content', '')
+                elif 'text' in choice:
+                    response_text = choice['text']
+            elif 'content' in data:
+                response_text = data['content']
+            
+            # Extract numeric score from response
+            numbers = re.findall(r'\d+\.?\d*', response_text)
+            score = float(numbers[0]) if numbers else 0.5
+            
+            # Clamp to valid range
+            score = min(max(score, 0.0), 1.0)
+        else:
+            # API error — return neutral score
+            score = 0.5
         
         # Cache result
         if use_cache:
@@ -198,7 +248,7 @@ class OptimizedHybridDetector:
         
         print(f"\n Hybrid detector initialized:")
         print(f"  • Stage 1: XGBoost ({n_estimators or XGB_N_ESTIMATORS} trees, fast)")
-        print(f"  • Stage 2: Qwen 2.5 7B (high-risk only)")
+        print(f"  • Stage 2: {LLM_MODEL_NAME} via Anaconda Connect API (high-risk only)")
         print(f"  • LLM trigger: XGB score > {self.llm_threshold}")
         if max_llm_calls:
             print(f"  • LLM limit: {max_llm_calls} calls (demo mode)")
@@ -216,7 +266,7 @@ class OptimizedHybridDetector:
         Returns:
             self (for method chaining)
             
-        Note: LLM requires no training (pre-trained foundation model)
+        Note: LLM requires no training (pre-trained foundation model served via API)
         """
         if verbose:
             print("\n Training XGBoost...")
@@ -245,7 +295,7 @@ class OptimizedHybridDetector:
             
         Two-Stage Process:
             1. XGBoost screens all transactions (fast)
-            2. LLM analyzes high-risk cases (if descriptions provided)
+            2. LLM analyzes high-risk cases via API (if descriptions provided)
         """
         if verbose:
             print(f"\n Analyzing {len(X):,} transactions...")
@@ -280,7 +330,7 @@ class OptimizedHybridDetector:
         
         llm_analyzed = 0
         if verbose and high_risk_mask.sum() > 0:
-            print(f"   Stage 2: Analyzing {high_risk_mask.sum()} high-risk cases with LLM...")
+            print(f"   Stage 2: Analyzing {high_risk_mask.sum()} high-risk cases with LLM API...")
         
         start_time = time.time()
         for idx in np.where(high_risk_mask)[0]:
@@ -351,12 +401,12 @@ class OptimizedHybridDetector:
 
 def test_llm_analysis(verbose=True):
     """
-    Quick test of LLM analysis function
+    Quick test of LLM analysis function via API
     
-    Use Case: Verify LLM is working before running full pipeline
+    Use Case: Verify API endpoint is working before running full pipeline
     """
     if verbose:
-        print("\n Testing LLM analysis...")
+        print("\n Testing LLM analysis (via Anaconda Connect API)...")
     
     test_cases = [
         ("AMAZON.COM MKTP US", 67.89, "Low Risk"),
@@ -382,9 +432,10 @@ def get_model_info():
         dict with model information
     """
     info = {
-        'llm_loaded': _model is not None,
+        'llm_loaded': _session is not None,
         'llm_model_name': LLM_MODEL_NAME,
+        'llm_mode': 'Anaconda Connect API',
         'cache_size': len(_llm_cache),
-        'device': str(next(_model.parameters()).device) if _model else 'Not loaded'
+        'endpoint': CONNECT_ENDPOINT[:60] + '...'
     }
     return info

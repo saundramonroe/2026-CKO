@@ -646,7 +646,7 @@ st.sidebar.markdown("**Status:** Running")
 st.sidebar.markdown("**Endpoints:**")
 st.sidebar.markdown("- AI Catalyst (Production)")
 st.sidebar.markdown("- Anaconda Desktop (Local)")
-st.sidebar.markdown("**Model:** Hybrid XGBoost + Qwen 2.5 7B")
+st.sidebar.markdown("**Model:** Hybrid XGBoost + Meta-Llama-3.1-8B-Instruct")
 
 
 
@@ -2712,7 +2712,7 @@ elif page == "System Status":
             # Clear the cache
             check_system_health.clear()
             # Re-run health check
-            health_status = check_system_health()
+            health_status = api_client.test_connection()
             st.session_state.health_status = health_status
 
             st.write(" DEBUG: Fresh health check results:")
@@ -2888,7 +2888,7 @@ elif page == "System Status":
                     st.session_state.health_status = health_status
                     st.success("**Anaconda Desktop is ONLINE**")
                     st.info(f"Response time: {latency:.1f}ms")
-                    st.success("Local Qwen 2.5 7B responding")
+                    st.success("Local Meta-Llama-3.1-8B-Instruct responding")
                     
                     try:
                         json_response = resp.json()
@@ -3045,7 +3045,7 @@ elif page == "System Status":
         st.markdown("""
         **Configuration:**
         - **Platform:** Anaconda AI Catalyst
-        - **Model:** Hybrid XGBoost + Qwen 2.5 7B
+        - **Model:** Hybrid XGBoost + Meta-Llama-3.1-8B-Instruct
         - **SLA:** <100ms latency
         - **Scaling:** Auto-enabled
         - **Auth:** Token required 
@@ -3067,7 +3067,7 @@ elif page == "System Status":
         st.markdown("""
         **Configuration:**
         - **Platform:** Local server
-        - **Model:** Qwen 2.5 7B (7 billion parameters)
+        - **Model:** Meta-Llama-3.1-8B-Instruct (8 billion parameters)
         - **Port:** 8080
         - **Purpose:** Fallback + development
         - **Auth:** None required 
@@ -3161,7 +3161,7 @@ elif page == "System Status":
             </div>
             <div style='margin-bottom: 15px;'>
                 <strong style='font-size: 16px;'>2️⃣ Anaconda Desktop</strong><br>
-                <span style='color: #666; font-size: 14px;'>Local Qwen 2.5 7B inference</span><br>
+                <span style='color: #666; font-size: 14px;'>Local Meta-Llama-3.1-8B-Instruct inference</span><br>
                 <span style='color: {"#28a745" if health_status["navigator"] else "#dc3545"}; 
                             font-size: 12px; font-weight: bold;'>
                     {"Running" if health_status["navigator"] else " Offline"}
@@ -3289,7 +3289,7 @@ elif page == "System Status":
             st.success(" **All fraud predictions are using AI Catalyst (Production)**")
             st.caption("Your app is running in production mode with the deployed model")
         elif current_health['navigator']: 
-            st.info(" **Predictions using Anaconda Desktop (Local Qwen 2.5 7B)**")
+            st.info(" **Predictions using Anaconda Desktop (Local Meta-Llama-3.1-8B-Instruct)**")
             st.caption("AI Catalyst unavailable - using local LLM fallback")
         else:
             st.warning(" **Predictions using Mock Model (Demo Mode)**")

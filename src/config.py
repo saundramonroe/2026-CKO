@@ -18,7 +18,7 @@ Anaconda Value: Single source of truth for reproducible experiments
 # API Authentication Token for Anaconda Connect
 
 
-API_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE4MDQzNTMzMDgsImtpZCI6IjciLCJzY29wZXMiOlsiY2xvdWQ6cmVhZCIsImNsb3VkOndyaXRlIiwicmVwbzpyZWFkIiwicmVwbzp3cml0ZSJdLCJ2ZXIiOiJhcGk6MSIsInN1YiI6IjVjZjQwNDJhLTE3NDUtNDE0MC1iODE5LTA4NmRjZGE1Njc2NiJ9.V_ezDWeZGyZgZYxIQ5BxVPw5G7bB9BQgSGJXx4H_f0sYaDjjRVVy2bU9viuZcXh801COXkNMGtC33UW_ysDaIEmeBFx7GxXQ9UUv1u74qBae4d7u1zohzsael9vDl3pgvWrxg7vzRWLQPW83PmXeX93bkpz4yBesrpldRy3XbEYAJI_eBz31VVk97WKqHP39G3Pm57hSLsORNmYlAuzKBbvqfEjTkEy5CFFwamkGPftuyNNEJoe5qVAPrdPSCmGqxhB6UzyW9T0Mjd_S-s7muZ-BcHTbFOTpz3o3Lha7-h_kS2UkdLc8iaBMsg534E7IkxuwH3TvH5HhYWn-09pa_Q"
+API_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE4MDYxNTU1NDIsImtpZCI6IjgiLCJzY29wZXMiOlsiY2xvdWQ6cmVhZCIsImNsb3VkOndyaXRlIiwicmVwbzpyZWFkIiwicmVwbzp3cml0ZSJdLCJ2ZXIiOiJhcGk6MSIsInN1YiI6IjRiNTM4MGYyLWY1M2QtNDUwYS05M2E5LTgzMTdmYjJkZWFhMCJ9.PHMu6bLwPxSPFdv2o41n8BauSoCjtVnU2bg9ViSVSiZxLoyRdWBo6MN-_fMJfZyC4UvXuaIaLlfNCaKTVXzW6DDWvH7AodRTnP32XFBRzeaw-1QJ2_3sF_FrBDeSeEk1rhMNY87z6yHUO9AauQOT1A4hVw4WZJcs1IfMuVhQpYbrUlhwgb61JMuvdjOGKet1uITO_g_ZOmK2LJg-IX9Ek8NanqGmodMSwCarW6nvUSFxqkzyM6ekYYmJ2--5KMV5SqGPJGe1NNwDstCAb4fYK5adlRg9bcJve3Lf7IQB7kPSxvX4tlhyQywZOguM1As-knXSwIdk2qkO0vGwIpLvJw"
 __all__ = [
     'CONNECT_ENDPOINT', 
     'NAVIGATOR_ENDPOINT', 
@@ -31,7 +31,7 @@ __all__ = [
 
 # Anaconda Connect - Production deployed model
 
-CONNECT_ENDPOINT = "https://ahadji1.sb.anacondaconnect.com/api/ai/inference/serve/72b797bd-964e-4c90-9081-c64028ba383a/v1/chat/completions"
+CONNECT_ENDPOINT = "https://demo.se.sb.anacondaconnect.com/api/ai/inference/serve/bca8f194-702f-43d6-afa0-ec8ec306064a/v1/chat/completions"
 
 # AI Navigator - Local LLM server
 NAVIGATOR_ENDPOINT = "http://127.0.0.1:8080/v1/chat/completions"
@@ -42,8 +42,8 @@ NAVIGATOR_ENDPOINT = "http://127.0.0.1:8080/v1/chat/completions"
 # ================================================================================
 
 # LLM Model
-LLM_MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct"
-LLM_MAX_NEW_TOKENS = 5
+LLM_MODEL_NAME = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+LLM_MAX_NEW_TOKENS = 50
 LLM_TEMPERATURE = 0.1
 
 # Hybrid Model Weights
